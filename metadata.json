@@ -1,0 +1,6 @@
+{
+  "name": "MyOwn Media",
+  "description": "An interactive 3D cube portfolio builder for artists. Customize your exhibitions, upload artwork, and share immersive galleries with a single click.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
