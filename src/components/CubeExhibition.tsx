@@ -12,6 +12,7 @@ interface CubeExhibitionProps {
   isReadOnly?: boolean;
   onOpenStudio?: () => void;
   onToggleTheme?: () => void;
+  onStartWalkthrough?: () => void;
 }
 
 export function faceAtStop(i: number, N: number): number {
@@ -47,7 +48,8 @@ export default function CubeExhibition({
   portfolio,
   isReadOnly = false,
   onOpenStudio,
-  onToggleTheme
+  onToggleTheme,
+  onStartWalkthrough
 }: CubeExhibitionProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cubeRef = useRef<HTMLDivElement>(null);
@@ -404,6 +406,7 @@ export default function CubeExhibition({
         {portfolio.faces.map((f, i) => (
           <a
             key={i}
+            id={`scene-dot-${i}`}
             href={`#s${i}`}
             onClick={(e) => handleDotClick(e, i)}
             className={`scene-dot w-1.5 h-1.5 rounded-full select-none cursor-pointer transition-all duration-300 block bg-neutral-500 hover:bg-[var(--accent)] ${i === 0 ? 'active' : ''}`}
@@ -523,16 +526,25 @@ export default function CubeExhibition({
               </div>
             </div>
 
-            <div className="pt-2 text-center">
+            <div className="pt-2 flex flex-col sm:flex-row gap-2 justify-center items-stretch">
               <button 
                 onClick={() => setIsModalOpen(false)}
-                className={`px-4 py-1.5 font-mono text-[10px] uppercase tracking-wider rounded border hover:scale-102 transition cursor-pointer ${
+                className={`px-4 py-2 font-mono text-[10px] uppercase tracking-wider rounded border hover:scale-102 transition cursor-pointer flex-1 text-center justify-center flex items-center ${
                   isLight 
                     ? 'bg-neutral-900 border-neutral-800 text-neutral-100 hover:bg-neutral-800' 
-                    : 'bg-neutral-200 border-neutral-300 text-neutral-900 hover:bg-neutral-100 hover:border-neutral-100'
+                    : 'bg-neutral-200 border-neutral-300 text-neutral-900 hover:bg-neutral-150'
                 }`}
               >
                 Enter Exhibition
+              </button>
+              <button 
+                onClick={() => {
+                  setIsModalOpen(false);
+                  if (onStartWalkthrough) onStartWalkthrough();
+                }}
+                className="px-4 py-2 font-mono text-[10px] uppercase tracking-wider bg-[var(--accent)] text-neutral-950 font-bold rounded border border-transparent hover:scale-102 hover:brightness-110 shadow transition cursor-pointer flex-1 text-center justify-center flex items-center"
+              >
+                Walkthrough
               </button>
             </div>
           </div>
@@ -629,6 +641,7 @@ export default function CubeExhibition({
 
         {!isReadOnly && onOpenStudio && (
           <button
+            id="studio_toggle"
             onClick={onOpenStudio}
             className={`flex items-center gap-1.5 py-1 px-3 border text-[10px] tracking-wider rounded font-mono uppercase transition cursor-pointer shadow-md ${
               isLight 

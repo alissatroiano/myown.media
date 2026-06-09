@@ -79,6 +79,240 @@ export default function App() {
   // Stored showcases index { id: string, name: string }[]
   const [savedPortfolios, setSavedPortfolios] = useState<{ id: string; name: string }[]>([]);
 
+  // Walkthrough Tour State
+  const [walkthroughStep, setWalkthroughStep] = useState<number>(-1); // -1 = inactive
+  const [tourMessage, setTourMessage] = useState<string>('');
+  const [cursorState, setCursorState] = useState<{
+    x: number;
+    y: number;
+    visible: boolean;
+    clicking: boolean;
+  }>({ x: 0, y: 0, visible: false, clicking: false });
+
+  // Safe name updater for typing simulations avoiding stale closure problems
+  const handleUpdatePortfolioName = (newName: string) => {
+    setActivePortfolio(prev => {
+      if (!prev) return null;
+      const updated = { ...prev, name: newName };
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY_PREFIX + updated.id, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleStartWalkthrough = () => {
+    // If they are visiting as guest, programmatically clone to their workspace first!
+    if (isReadOnly && activePortfolio) {
+      const cloneId = `exhibit-${Date.now()}`;
+      const clonedRecord: Portfolio = {
+        ...activePortfolio,
+        id: cloneId,
+        name: `${activePortfolio.name} (Clone)`
+      };
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY_PREFIX + cloneId, JSON.stringify(clonedRecord));
+        const storedIndexStr = localStorage.getItem(PORTFOLIO_INDEX_KEY);
+        let list = [];
+        if (storedIndexStr) {
+          list = JSON.parse(storedIndexStr);
+        }
+        list = [{ id: cloneId, name: clonedRecord.name }, ...list];
+        localStorage.setItem(PORTFOLIO_INDEX_KEY, JSON.stringify(list));
+        
+        setSavedPortfolios(list);
+        setIsReadOnly(false);
+        setActivePortfolio(clonedRecord);
+        window.location.hash = ''; // Clear shared hash
+      } catch (err) {
+        console.warn("Local storage sandboxing clone warning:", err);
+      }
+    }
+    
+    setIsStudioOpen(false); // Make sure studio drawer is closed so the tour can click open!
+    setTourMessage('');
+    setWalkthroughStep(0);
+  };
+
+  // Track target coordinates dynamically (fully responsive support)
+  useEffect(() => {
+    if (walkthroughStep === -1) {
+      setCursorState(prev => ({ ...prev, visible: false }));
+      return;
+    }
+
+    let targetSelector = '';
+    let msg = '';
+
+    switch (walkthroughStep) {
+      case 0:
+        msg = "Welcome to myown.media interactive Tour! Let's build your custom 3D catalog. Click 'Next Step' to continue.";
+        setCursorState({ x: window.innerWidth / 2, y: window.innerHeight / 2, visible: true, clicking: false });
+        break;
+      case 1:
+        msg = "First, let's open the Studio Panel on the top-left where all metadata resides.";
+        targetSelector = '#studio_toggle';
+        break;
+      case 2:
+        msg = "We can personalize the theme accent config. Watch how clicking 'Azure' updates the color theme immediately!";
+        targetSelector = '#accent-btn-azure';
+        break;
+      case 3:
+        msg = "Next, let's edit our exhibition name. Watch as 'NEO-MUSEUM' types itself letter-by-letter live!";
+        targetSelector = '#studio_exhibit_name';
+        break;
+      case 4:
+        msg = "Let's click section node 1 to spin the 3D exhibition cube. Watch how our accent color updates!";
+        targetSelector = '#scene-dot-1';
+        break;
+      case 5:
+        msg = "Perfect! Everything is baked into an encrypted URL. Click to copy and share it with your audience!";
+        targetSelector = '#studio_copy_link';
+        break;
+      case 6:
+        msg = "Tour complete! You're ready to create masterpieces. Enjoy personalizing your 3D Exhibition!";
+        targetSelector = '#studio_close';
+        break;
+      default:
+        break;
+    }
+
+    setTourMessage(msg);
+
+    if (!targetSelector) return;
+
+    const updatePosition = () => {
+      const el = document.querySelector(targetSelector);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        setCursorState(prev => ({
+          ...prev,
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+          visible: true
+        }));
+      }
+    };
+
+    updatePosition();
+    const handleUpdate = () => {
+      updatePosition();
+    };
+
+    window.addEventListener('scroll', handleUpdate);
+    window.addEventListener('resize', handleUpdate);
+    
+    // Interval check as well in case drawer panel opens/slides
+    const posInterval = setInterval(updatePosition, 100);
+
+    return () => {
+      window.removeEventListener('scroll', handleUpdate);
+      window.removeEventListener('resize', handleUpdate);
+      clearInterval(posInterval);
+    };
+  }, [walkthroughStep]);
+
+  // Walkthrough Autosave/Auto-Action Progression
+  useEffect(() => {
+    if (walkthroughStep === -1) return;
+
+    let autoTimer: any;
+    let actionTimer: any;
+
+    if (walkthroughStep === 0) {
+      // Welcome screen: wait 4s then go to next
+      autoTimer = setTimeout(() => {
+        setWalkthroughStep(1);
+      }, 4000);
+    } else if (walkthroughStep === 1) {
+      // Open Studio drawer
+      actionTimer = setTimeout(() => {
+        setCursorState(prev => ({ ...prev, clicking: true }));
+        setTimeout(() => {
+          setCursorState(prev => ({ ...prev, clicking: false }));
+          setIsStudioOpen(true);
+          setWalkthroughStep(2);
+        }, 150);
+      }, 1500);
+    } else if (walkthroughStep === 2) {
+      // Choose azure accent color
+      actionTimer = setTimeout(() => {
+        setCursorState(prev => ({ ...prev, clicking: true }));
+        setTimeout(() => {
+          setCursorState(prev => ({ ...prev, clicking: false }));
+          const btn = document.querySelector('#accent-btn-azure') as HTMLButtonElement;
+          if (btn) {
+            btn.click();
+          } else if (activePortfolio) {
+            handleUpdatePortfolio({ ...activePortfolio, accentColor: 'azure' });
+          }
+          setWalkthroughStep(3);
+        }, 150);
+      }, 1500);
+    } else if (walkthroughStep === 3) {
+      // Type "NEO-SPACE"
+      actionTimer = setTimeout(() => {
+        const textToType = "NEO-SPACE";
+        let currentIndex = 0;
+        const typingInterval = setInterval(() => {
+          if (currentIndex < textToType.length) {
+            currentIndex++;
+            const partial = textToType.substring(0, currentIndex);
+            handleUpdatePortfolioName(partial + " EXHIBIT");
+          } else {
+            clearInterval(typingInterval);
+            setTimeout(() => {
+              setWalkthroughStep(4);
+            }, 800);
+          }
+        }, 120);
+      }, 1200);
+    } else if (walkthroughStep === 4) {
+      // Rotate cube (click scene-dot-1)
+      actionTimer = setTimeout(() => {
+        setCursorState(prev => ({ ...prev, clicking: true }));
+        setTimeout(() => {
+          setCursorState(prev => ({ ...prev, clicking: false }));
+          const dot = document.querySelector('#scene-dot-1') as HTMLAnchorElement;
+          if (dot) {
+            dot.click();
+          } else {
+            window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
+          }
+          setWalkthroughStep(5);
+        }, 150);
+      }, 1800);
+    } else if (walkthroughStep === 5) {
+      // Copy shared link
+      actionTimer = setTimeout(() => {
+        setCursorState(prev => ({ ...prev, clicking: true }));
+        setTimeout(() => {
+          setCursorState(prev => ({ ...prev, clicking: false }));
+          const copyBtn = document.querySelector('#studio_copy_link') as HTMLButtonElement;
+          if (copyBtn) copyBtn.click();
+          setWalkthroughStep(6);
+        }, 150);
+      }, 2000);
+    } else if (walkthroughStep === 6) {
+      // Close studio
+      actionTimer = setTimeout(() => {
+        setCursorState(prev => ({ ...prev, clicking: true }));
+        setTimeout(() => {
+          setCursorState(prev => ({ ...prev, clicking: false }));
+          setIsStudioOpen(false);
+          setTimeout(() => {
+            setWalkthroughStep(-1);
+          }, 1500);
+        }, 150);
+      }, 2200);
+    }
+
+    return () => {
+      clearTimeout(autoTimer);
+      clearTimeout(actionTimer);
+    };
+  }, [walkthroughStep, activePortfolio]);
+
   // System setup or state recovery
   useEffect(() => {
     // 1. Check if the URL has an embedded exhibit hash
@@ -327,6 +561,7 @@ export default function App() {
         isReadOnly={isReadOnly}
         onOpenStudio={() => setIsStudioOpen(!isStudioOpen)}
         onToggleTheme={handleToggleTheme}
+        onStartWalkthrough={handleStartWalkthrough}
       />
 
       {/* Guest QR Code scan popover */}
@@ -428,6 +663,96 @@ export default function App() {
           backgroundSize: '40px 40px, 120px 120px, 120px 120px'
         }}
       />
+
+      {/* Interactive Autopilot Walkthrough HUD Panel */}
+      {walkthroughStep !== -1 && (
+        <div className="fixed bottom-6 left-1/2 -as-center -translate-x-1/2 z-[1000] w-[calc(100%-32px)] max-w-lg bg-neutral-950/95 border border-[var(--accent)] rounded-lg p-4 shadow-[0_25px_60px_rgba(0,0,0,0.85)] backdrop-blur-md animate-slide-up-fade text-white font-mono flex flex-col md:flex-row gap-4 items-center justify-between select-none">
+          <div className="flex-1 space-y-2 text-left w-full">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 relative">
+                <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-ping absolute" />
+                <span className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                <span className="text-[10px] tracking-widest text-[var(--accent)] uppercase font-bold pl-1">
+                  AUTOPILOT TOUR
+                </span>
+              </div>
+              <span className="text-[9px] text-neutral-400 font-bold bg-neutral-900 border border-neutral-800 px-1.5 py-0.5 rounded">
+                STEP {walkthroughStep + 1} OF 7
+              </span>
+            </div>
+            
+            <p className="text-[10.5px] leading-relaxed text-zinc-200">
+              {tourMessage}
+            </p>
+
+            {/* Visual Micro Progress line tracker */}
+            <div className="w-full h-[2.5px] bg-neutral-900 border border-neutral-800/60 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-[var(--accent)] transition-all duration-500 rounded-full shadow-[0_0_8px_var(--accent)]" 
+                style={{ width: `${((walkthroughStep + 1) / 7) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 w-full md:w-auto shrink-0 justify-end">
+            {walkthroughStep < 6 && (
+              <button
+                onClick={() => setWalkthroughStep(prev => prev + 1)}
+                className="flex-1 md:flex-initial py-2 px-3 border border-neutral-800 bg-neutral-900 hover:border-neutral-700 hover:bg-neutral-850 text-neutral-200 text-[9.5px] font-bold uppercase tracking-wider rounded transition cursor-pointer"
+              >
+                Next Step
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setIsStudioOpen(false);
+                setWalkthroughStep(-1);
+              }}
+              className="flex-grow md:flex-grow-0 py-2 px-3 bg-red-950/20 border border-red-900/30 hover:bg-red-950/45 hover:border-red-900/50 text-red-400 text-[9.5px] uppercase font-bold tracking-wider rounded transition cursor-pointer"
+            >
+              Skip
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Glowing virtual interactive cursor representation */}
+      {walkthroughStep !== -1 && cursorState.visible && (
+        <div 
+          className="fixed pointer-events-none z-[10001] select-none"
+          style={{
+            left: `${cursorState.x}px`,
+            top: `${cursorState.y}px`,
+            transition: 'left 0.85s cubic-bezier(0.16, 1, 0.3, 1), top 0.85s cubic-bezier(0.16, 1, 0.3, 1)',
+            transform: `translate(-50%, -50%) scale(${cursorState.clicking ? 0.72 : 1.0})`,
+          }}
+        >
+          <div className="relative w-8 h-8 flex items-center justify-center">
+            {/* Pulsing ring during clicking tap */}
+            {cursorState.clicking && (
+              <span className="absolute w-12 h-12 rounded-full border-2 border-[var(--accent)] animate-ping opacity-85" />
+            )}
+            
+            {/* Secondary radial pulse halo */}
+            <span className="w-8 h-8 rounded-full bg-[var(--accent)] absolute opacity-10 animate-pulse" />
+            
+            {/* Primary tracking ring */}
+            <span className="w-5 h-5 rounded-full border-2 border-[var(--accent)] bg-neutral-950/30 backdrop-blur-[0.5px] absolute shadow-[0_0_12px_var(--accent)]" />
+            
+            {/* Laser core pointer */}
+            <span className="w-1.5 h-1.5 rounded-full bg-white absolute shadow-[0_0_6px_#fff]" />
+            
+            {/* Custom SVG pointer tail */}
+            <svg 
+              className="w-4 h-4 text-[var(--accent)] absolute -top-1 -left-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]" 
+              fill="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path d="M4.5 3v13.5l4-4 2.5 5.5 2-1-2.5-5.5 5-1z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

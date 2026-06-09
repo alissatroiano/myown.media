@@ -246,6 +246,7 @@ export default function CreatorStudio({
           <span className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[9px] px-1.5 py-0.5 rounded font-mono">beta</span>
         </div>
         <button 
+          id="studio_close"
           onClick={onClose}
           className="p-1 px-1.5 hover:bg-neutral-800 rounded text-neutral-400 hover:text-neutral-100 transition cursor-pointer"
           aria-label="Close panel"
@@ -622,6 +623,7 @@ export default function CreatorStudio({
                   return (
                     <button
                       key={acc.id}
+                      id={`accent-btn-${acc.id}`}
                       onClick={() => onUpdatePortfolio({ ...portfolio, accentColor: acc.id })}
                       className={`p-2.5 rounded border text-left flex items-center gap-2 transition cursor-pointer ${
                         isCur 
@@ -805,6 +807,7 @@ export default function CreatorStudio({
                 <div className="space-y-1">
                   <span className="text-[9px] uppercase font-mono tracking-wider text-neutral-400">Show Title</span>
                   <input 
+                    id="studio_exhibit_name"
                     type="text"
                     value={portfolio.name}
                     onChange={(e) => onUpdatePortfolio({ ...portfolio, name: e.target.value })}
@@ -1045,6 +1048,7 @@ export default function CreatorStudio({
 
               <div className="flex gap-2">
                 <button
+                  id="studio_copy_link"
                   onClick={handleCopyLink}
                   className="flex-1 py-3 px-4 bg-[var(--accent)] border border-transparent rounded text-xs tracking-wider font-mono uppercase transition cursor-pointer text-neutral-950 font-bold flex items-center justify-center gap-1.5 hover:shadow-lg hover:brightness-105 active:scale-[0.99]"
                 >
