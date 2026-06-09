@@ -8,7 +8,8 @@ import { Portfolio, AccentColor, FontPair } from './types';
 import { TEMPLATES } from './data/templates';
 import CubeExhibition from './components/CubeExhibition';
 import CreatorStudio from './components/CreatorStudio';
-import { Palette, ExternalLink, HelpCircle, Check, BookOpen, Layers, Sparkles } from 'lucide-react';
+import { Palette, ExternalLink, HelpCircle, Check, BookOpen, Layers, Sparkles, QrCode } from 'lucide-react';
+import QRCode from 'qrcode';
 
 const LOCAL_STORAGE_KEY_PREFIX = 'myown-media-portfolio-';
 const PORTFOLIO_INDEX_KEY = 'myown-media-index';
@@ -58,6 +59,10 @@ export default function App() {
   const [activePortfolio, setActivePortfolio] = useState<Portfolio | null>(null);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
+  
+  // QR mobile sharing state
+  const [showQr, setShowQr] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   
   // Stored showcases index { id: string, name: string }[]
   const [savedPortfolios, setSavedPortfolios] = useState<{ id: string; name: string }[]>([]);
@@ -154,6 +159,31 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isReadOnly]);
+
+  // Dynamic high-contrast QR code generation for the shared URL hash
+  useEffect(() => {
+    if (!isReadOnly || !activePortfolio) return;
+
+    const generateQr = async () => {
+      try {
+        // High-contrast clean styling to guarantee rapid camera focus on all phones
+        const url = await QRCode.toDataURL(window.location.href, {
+          color: {
+            dark: '#18181b', // Zn 900
+            light: '#ffffff' // Pure White
+          },
+          margin: 1.5,
+          width: 260,
+          errorCorrectionLevel: 'M'
+        });
+        setQrCodeUrl(url);
+      } catch (err) {
+        console.error('Failed to generate exhibition QR link:', err);
+      }
+    };
+
+    generateQr();
+  }, [isReadOnly, activePortfolio]);
 
   // Update active state and write incrementally to storage
   const handleUpdatePortfolio = (updated: Portfolio) => {
@@ -287,6 +317,39 @@ export default function App() {
         onToggleTheme={handleToggleTheme}
       />
 
+      {/* Guest QR Code scan popover */}
+      {isReadOnly && showQr && (
+        <div className="fixed bottom-[96px] right-6 z-30 w-64 bg-neutral-950/95 border border-neutral-800 p-4 rounded-lg backdrop-blur-md shadow-2xl animate-slide-up-fade font-mono flex flex-col items-center">
+          <div className="text-center mb-3">
+            <span className="text-[var(--accent)] font-semibold text-[10px] tracking-wider uppercase block select-none">Exhibition QR Code</span>
+            <span className="text-[8.5px] text-neutral-400 leading-normal block mt-1 select-none">Scan with your phone camera to transition this 3D gallery to mobile seamlessly</span>
+          </div>
+          
+          <div 
+            className="p-2 bg-white rounded-md flex items-center justify-center shadow-lg transition-transform duration-300 hover:scale-[1.02]"
+            style={{ border: `3px solid var(--accent)` }}
+          >
+            {qrCodeUrl ? (
+              <img 
+                src={qrCodeUrl} 
+                alt="Exhibition mobile access QR code" 
+                className="w-36 h-36 select-none pointer-events-none"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-36 h-36 bg-neutral-900 animate-pulse flex items-center justify-center text-[10px] text-neutral-500">
+                generating...
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-3 flex items-center gap-1.5 text-[8.5px] text-neutral-500 border-t border-neutral-800/60 pt-2.5 w-full justify-center select-none">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Exhibition ready for camera scan</span>
+          </div>
+        </div>
+      )}
+
       {/* Guest/Preview banner if visiting via sharing hash */}
       {isReadOnly && (
         <div className="fixed bottom-6 right-6 z-30 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 max-w-sm sm:max-w-none bg-neutral-950/90 border border-neutral-800 p-3.5 rounded-lg backdrop-blur-md shadow-2xl animate-bounce-subtle select-none">
@@ -297,6 +360,18 @@ export default function App() {
           </div>
           
           <div className="flex gap-1.5 justify-end">
+            <button
+              onClick={() => setShowQr(prev => !prev)}
+              className={`py-1.5 px-3 rounded font-mono text-[10px] uppercase tracking-wider transition duration-250 cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${
+                showQr 
+                  ? 'bg-[var(--accent)] text-neutral-950 border-[var(--accent)] font-bold' 
+                  : 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800 hover:border-neutral-700'
+              }`}
+              title="Toggle Mobile QR Scan code"
+            >
+              <QrCode className="w-3.5 h-3.5" />
+              <span>{showQr ? 'Hide QR' : 'Mobile QR'}</span>
+            </button>
             <button
               onClick={handleCloneSharedToLocal}
               className="py-1.5 px-3 bg-[var(--accent)] text-neutral-950 rounded font-mono text-[10px] uppercase font-bold tracking-wider hover:scale-[1.02] shadow transition cursor-pointer flex items-center gap-1.5"
