@@ -64,19 +64,7 @@ export default function CubeExhibition({
   // React state for low-frequency changes (mostly tracking visible section to apply staggered fades)
   const [activeFaceIdx, setActiveFaceIdx] = useState(0);
   const [visibleCards, setVisibleCards] = useState<boolean[]>([true, false, false, false, false, false]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Auto-open modal on first page load in user's session
-  useEffect(() => {
-    const hasSeenGuide = sessionStorage.getItem('myown_media_has_seen_guide');
-    if (!hasSeenGuide) {
-      const timer = setTimeout(() => {
-        setIsModalOpen(true);
-        sessionStorage.setItem('myown_media_has_seen_guide', 'true');
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, []);
+  const [isModalOpen, setIsModalOpen] = useState(true);
 
   // Keep visibleCards synced dynamically with portfolio.faces.length
   useEffect(() => {
