@@ -266,24 +266,28 @@ export default function CreatorStudio({
       {/* Tab Selectors */}
       <div className="flex border-b border-neutral-800 text-xs font-mono">
         <button 
+          id="studio_tab_faces"
           onClick={() => { setActiveTab('faces'); setAssetSelectorOpen(false); }}
           className={`flex-1 py-3 text-center border-b-2 transition cursor-pointer ${activeTab === 'faces' ? 'border-[var(--accent)] text-[var(--accent)] bg-neutral-900/30' : 'border-transparent text-neutral-400 hover:text-neutral-200'}`}
         >
           Faces ({portfolio.faces.length})
         </button>
         <button 
+          id="studio_tab_styling"
           onClick={() => { setActiveTab('styling'); setAssetSelectorOpen(false); }}
           className={`flex-1 py-3 text-center border-b-2 transition cursor-pointer ${activeTab === 'styling' ? 'border-[var(--accent)] text-[var(--accent)] bg-neutral-900/30' : 'border-transparent text-neutral-400 hover:text-neutral-200'}`}
         >
           Styling
         </button>
         <button 
+          id="studio_tab_library"
           onClick={() => { setActiveTab('library'); setAssetSelectorOpen(false); }}
           className={`flex-1 py-3 text-center border-b-2 transition cursor-pointer ${activeTab === 'library' ? 'border-[var(--accent)] text-[var(--accent)] bg-neutral-900/30' : 'border-transparent text-neutral-400 hover:text-neutral-200'}`}
         >
           Exhibits
         </button>
         <button 
+          id="studio_tab_share"
           onClick={() => { setActiveTab('share'); setAssetSelectorOpen(false); }}
           className={`flex-1 py-3 text-center border-b-2 transition cursor-pointer ${activeTab === 'share' ? 'border-[var(--accent)] text-[var(--accent)] bg-neutral-900/30' : 'border-transparent text-neutral-400 hover:text-neutral-200'}`}
         >

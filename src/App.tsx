@@ -148,30 +148,38 @@ export default function App() {
 
     switch (walkthroughStep) {
       case 0:
-        msg = "Welcome to myown.media interactive Tour! Let's build your custom 3D catalog. Click 'Next Step' to continue.";
+        msg = "Welcome to the myown.media interactive Tour! Let's build your custom 3D catalog. This walkthrough is fully automated with a pause control.";
         setCursorState({ x: window.innerWidth / 2, y: window.innerHeight / 2, visible: true, clicking: false });
         break;
       case 1:
-        msg = "First, let's open the Studio Panel on the top-left where all metadata resides.";
+        msg = "First, let's open the Studio Panel where all dynamic page layouts and metadata reside.";
         targetSelector = '#studio_toggle';
         break;
       case 2:
-        msg = "We can personalize the theme accent config. Watch how clicking 'Azure' updates the color theme immediately!";
-        targetSelector = '#accent-btn-azure';
+        msg = "Let's open the Styling tab to configure customized aesthetic options like accent colors and dark/light modes.";
+        targetSelector = '#studio_tab_styling';
         break;
       case 3:
-        msg = "Next, let's edit our exhibition name. Watch as 'NEO-MUSEUM' types itself letter-by-letter live!";
-        targetSelector = '#studio_exhibit_name';
+        msg = "Watch how changing our theme accent color config to 'Azure' updates the background graphics instantly!";
+        targetSelector = '#accent-btn-azure';
         break;
       case 4:
-        msg = "Let's click section node 1 to spin the 3D exhibition cube. Watch how our accent color updates!";
-        targetSelector = '#scene-dot-1';
+        msg = "Next, let's personalize our exhibition name. Watch as 'NEO-SPACE' types itself letter-by-letter live!";
+        targetSelector = '#studio_exhibit_name';
         break;
       case 5:
-        msg = "Perfect! Everything is baked into an encrypted URL. Click to copy and share it with your audience!";
-        targetSelector = '#studio_copy_link';
+        msg = "Now let's spin the 3D exhibition cube to see the rotation of face items in action!";
+        targetSelector = '#scene-dot-1';
         break;
       case 6:
+        msg = "Everything you create is backed into an encrypted direct link. Let's open the Publish tab!";
+        targetSelector = '#studio_tab_share';
+        break;
+      case 7:
+        msg = "Click the 'Copy Link' button to instantly grab your shareable exhibition link to share with your audience!";
+        targetSelector = '#studio_copy_link';
+        break;
+      case 8:
         msg = "Tour complete! You're ready to create masterpieces. Enjoy personalizing your 3D Exhibition!";
         targetSelector = '#studio_close';
         break;
@@ -222,21 +230,39 @@ export default function App() {
     let actionTimer: any;
 
     if (walkthroughStep === 0) {
-      // Welcome screen: wait 8.0s then go to next
+      // Welcome screen: wait 7.5s then go to next
       autoTimer = setTimeout(() => {
         setWalkthroughStep(1);
-      }, 8000);
+      }, 7500);
     } else if (walkthroughStep === 1) {
-      // Open Studio drawer
+      // Click open the Studio drawer button
       actionTimer = setTimeout(() => {
         setCursorState(prev => ({ ...prev, clicking: true }));
         setTimeout(() => {
           setCursorState(prev => ({ ...prev, clicking: false }));
-          setIsStudioOpen(true);
+          const toggleBtn = document.querySelector('#studio_toggle') as HTMLButtonElement;
+          if (toggleBtn) {
+            toggleBtn.click();
+          } else {
+            setIsStudioOpen(true);
+          }
           setWalkthroughStep(2);
         }, 300);
       }, 5500);
     } else if (walkthroughStep === 2) {
+      // Click styling tab header
+      actionTimer = setTimeout(() => {
+        setCursorState(prev => ({ ...prev, clicking: true }));
+        setTimeout(() => {
+          setCursorState(prev => ({ ...prev, clicking: false }));
+          const tabBtn = document.querySelector('#studio_tab_styling') as HTMLButtonElement;
+          if (tabBtn) {
+            tabBtn.click();
+          }
+          setWalkthroughStep(3);
+        }, 300);
+      }, 5500);
+    } else if (walkthroughStep === 3) {
       // Choose azure accent color
       actionTimer = setTimeout(() => {
         setCursorState(prev => ({ ...prev, clicking: true }));
@@ -248,11 +274,11 @@ export default function App() {
           } else if (activePortfolio) {
             handleUpdatePortfolio({ ...activePortfolio, accentColor: 'azure' });
           }
-          setWalkthroughStep(3);
+          setWalkthroughStep(4);
         }, 300);
       }, 5500);
-    } else if (walkthroughStep === 3) {
-      // Type "NEO-SPACE"
+    } else if (walkthroughStep === 4) {
+      // Fill and type "NEO-SPACE"
       actionTimer = setTimeout(() => {
         const textToType = "NEO-SPACE";
         let currentIndex = 0;
@@ -268,12 +294,12 @@ export default function App() {
           } else {
             clearInterval(typingInterval);
             setTimeout(() => {
-              setWalkthroughStep(4);
+              setWalkthroughStep(5);
             }, 1800);
           }
         }, 160);
       }, 4500);
-    } else if (walkthroughStep === 4) {
+    } else if (walkthroughStep === 5) {
       // Rotate cube (click scene-dot-1)
       actionTimer = setTimeout(() => {
         setCursorState(prev => ({ ...prev, clicking: true }));
@@ -285,27 +311,47 @@ export default function App() {
           } else {
             window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
           }
-          setWalkthroughStep(5);
+          setWalkthroughStep(6);
         }, 300);
       }, 6000);
-    } else if (walkthroughStep === 5) {
-      // Copy shared link
+    } else if (walkthroughStep === 6) {
+      // Open Publish tab header
+      actionTimer = setTimeout(() => {
+        setCursorState(prev => ({ ...prev, clicking: true }));
+        setTimeout(() => {
+          setCursorState(prev => ({ ...prev, clicking: false }));
+          const publishTabBtn = document.querySelector('#studio_tab_share') as HTMLButtonElement;
+          if (publishTabBtn) {
+            publishTabBtn.click();
+          }
+          setWalkthroughStep(7);
+        }, 300);
+      }, 5500);
+    } else if (walkthroughStep === 7) {
+      // Click the copy link button
       actionTimer = setTimeout(() => {
         setCursorState(prev => ({ ...prev, clicking: true }));
         setTimeout(() => {
           setCursorState(prev => ({ ...prev, clicking: false }));
           const copyBtn = document.querySelector('#studio_copy_link') as HTMLButtonElement;
-          if (copyBtn) copyBtn.click();
-          setWalkthroughStep(6);
+          if (copyBtn) {
+            copyBtn.click();
+          }
+          setWalkthroughStep(8);
         }, 300);
-      }, 6500);
-    } else if (walkthroughStep === 6) {
+      }, 5500);
+    } else if (walkthroughStep === 8) {
       // Close studio
       actionTimer = setTimeout(() => {
         setCursorState(prev => ({ ...prev, clicking: true }));
         setTimeout(() => {
           setCursorState(prev => ({ ...prev, clicking: false }));
-          setIsStudioOpen(false);
+          const closeBtn = document.querySelector('#studio_close') as HTMLButtonElement;
+          if (closeBtn) {
+            closeBtn.click();
+          } else {
+            setIsStudioOpen(false);
+          }
           setTimeout(() => {
             setWalkthroughStep(-1);
           }, 2000);
@@ -695,7 +741,7 @@ export default function App() {
                 )}
               </div>
               <span className="text-[9px] text-neutral-400 font-bold bg-neutral-900 border border-neutral-800 px-1.5 py-0.5 rounded">
-                STEP {walkthroughStep + 1} OF 7
+                STEP {walkthroughStep + 1} OF 9
               </span>
             </div>
             
@@ -707,7 +753,7 @@ export default function App() {
             <div className="w-full h-[2.5px] bg-neutral-900 border border-neutral-800/60 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-[var(--accent)] transition-all duration-500 rounded-full shadow-[0_0_8px_var(--accent)]" 
-                style={{ width: `${((walkthroughStep + 1) / 7) * 100}%` }}
+                style={{ width: `${((walkthroughStep + 1) / 9) * 100}%` }}
               />
             </div>
           </div>
@@ -734,7 +780,7 @@ export default function App() {
                 </>
               )}
             </button>
-            {walkthroughStep < 6 && (
+            {walkthroughStep < 8 && (
               <button
                 onClick={() => setWalkthroughStep(prev => prev + 1)}
                 className="flex-1 md:flex-initial py-2 px-3 border border-neutral-800 bg-neutral-900 hover:border-neutral-700 hover:bg-neutral-850 text-neutral-200 text-[9.5px] font-bold uppercase tracking-wider rounded transition cursor-pointer"
