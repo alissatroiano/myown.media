@@ -5,7 +5,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Portfolio, FaceConfig } from '../types';
-import { Sun, Moon, ArrowRight, ArrowLeft, Settings, Share2, HelpCircle } from 'lucide-react';
+import { Sun, Moon, ArrowRight, ArrowLeft, Settings, Share2, HelpCircle, Instagram, Twitter, Globe, Github } from 'lucide-react';
 
 interface CubeExhibitionProps {
   portfolio: Portfolio;
@@ -64,6 +64,19 @@ export default function CubeExhibition({
   // React state for low-frequency changes (mostly tracking visible section to apply staggered fades)
   const [activeFaceIdx, setActiveFaceIdx] = useState(0);
   const [visibleCards, setVisibleCards] = useState<boolean[]>([true, false, false, false, false, false]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Auto-open modal on first page load in user's session
+  useEffect(() => {
+    const hasSeenGuide = sessionStorage.getItem('myown_media_has_seen_guide');
+    if (!hasSeenGuide) {
+      const timer = setTimeout(() => {
+        setIsModalOpen(true);
+        sessionStorage.setItem('myown_media_has_seen_guide', 'true');
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   // Keep visibleCards synced dynamically with portfolio.faces.length
   useEffect(() => {
@@ -431,6 +444,113 @@ export default function CubeExhibition({
         )}
       </button>
 
+      {/* Guide Info Button bottom right */}
+      <button
+        onClick={() => setIsModalOpen(true)}
+        className={`btn-open fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-30 w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-sm border ${
+          isLight
+            ? 'bg-neutral-100 border-neutral-300 text-neutral-800 hover:bg-neutral-200'
+            : 'bg-neutral-900 border-neutral-800/80 text-[var(--accent)] hover:bg-neutral-800 hover:border-[var(--accent)]'
+        }`}
+        title="Open guide instructions"
+        aria-label="Open helper instructions pop-up"
+      >
+        <HelpCircle className="w-4 h-4" />
+      </button>
+
+      {/* Dynamic Gallery Help / How-To Modal Wrapper */}
+      <div 
+        className={`modal-wrapper ${isModalOpen ? 'open' : ''}`}
+        onClick={() => setIsModalOpen(false)}
+      >
+        <div 
+          className="modal select-none font-sans"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div 
+            className="btn-close" 
+            onClick={() => setIsModalOpen(false)}
+            aria-label="Close guide modal"
+          />
+          <div className="clear"></div>
+          
+          <div className="content space-y-4">
+            <div className="text-center pb-2 border-b border-neutral-200/15 dark:border-neutral-800/80">
+              <h2 className="font-mono text-xs tracking-widest uppercase font-bold text-[var(--accent)] flex items-center justify-center gap-1.5">
+                myown.media
+                <span className="w-[6px] h-[6px] rounded-full bg-gradient-to-tr from-[#ff3e00] to-[#ffbe00] shadow-[0_0_8px_rgba(255,62,0,0.85)] animate-pulse" />
+              </h2>
+              <p className="font-mono text-[9px] tracking-wider text-neutral-500 dark:text-neutral-400 mt-1">
+                3D CUBE EXHIBITION GUIDE
+              </p>
+            </div>
+
+            <div className="space-y-4 py-2">
+              <div className="flex gap-3">
+                <span className="font-mono text-xs text-[var(--accent)] font-bold">01.</span>
+                <div className="space-y-0.5">
+                  <h4 className="font-sans text-[11px] font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-100">
+                    INTERACTIVE 3D SPIN
+                  </h4>
+                  <p className="font-mono text-[10px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                    Swipe or scroll vertically anywhere on the screen to seamlessly spin the gorgeous 3D gallery cube face-by-face.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <span className="font-mono text-xs text-[var(--accent)] font-bold">02.</span>
+                <div className="space-y-0.5">
+                  <h4 className="font-sans text-[11px] font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-100">
+                    THE STUDIO EDITOR
+                  </h4>
+                  <p className="font-mono text-[10px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                    Click "Studio Panel" at the top-left to update face names, metrics, tags, and description copy live.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <span className="font-mono text-xs text-[var(--accent)] font-bold">03.</span>
+                <div className="space-y-0.5">
+                  <h4 className="font-sans text-[11px] font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-100">
+                    LAYOUT & COSMETIC CONFIG
+                  </h4>
+                  <p className="font-mono text-[10px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                    Try different exhibition modes like cinematic Split, modular Bento, and stark Brutalist with dynamic color scales.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <span className="font-mono text-xs text-[var(--accent)] font-bold">04.</span>
+                <div className="space-y-0.5">
+                  <h4 className="font-sans text-[11px] font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-100">
+                    SOCIAL MEDIA HANDLES
+                  </h4>
+                  <p className="font-mono text-[10px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                    Set your Instagram, Website, Twitter/X, and GitHub handle coordinates in the Studio to display on the primary screen.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 text-center">
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className={`px-4 py-1.5 font-mono text-[10px] uppercase tracking-wider rounded border hover:scale-102 transition cursor-pointer ${
+                  isLight 
+                    ? 'bg-neutral-900 border-neutral-800 text-neutral-100 hover:bg-neutral-800' 
+                    : 'bg-neutral-200 border-neutral-300 text-neutral-900 hover:bg-neutral-100 hover:border-neutral-100'
+                }`}
+              >
+                Enter Exhibition
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Bottom Center Dynamic Slide Descriptor caption and title */}
       <div id="face_caption" className="fixed bottom-8 left-1/2 -translate-x-1/2 z-10 text-center pointer-events-none select-none hidden sm:block">
         <div ref={captionNumRef} className="caption-num font-mono text-[9px] tracking-widest">01</div>
@@ -460,6 +580,64 @@ export default function CubeExhibition({
             {portfolio.name}
           </span>
         </div>
+
+        {/* Socials quick-bar */}
+        {portfolio.socials && (portfolio.socials.instagram || portfolio.socials.twitter || portfolio.socials.website || portfolio.socials.github) && (
+          <div className="flex items-center gap-3 ml-1.5 border-l border-neutral-300 dark:border-neutral-800 pl-3.5 h-6 animate-fade-in-slow">
+            {portfolio.socials.instagram && (
+              <a 
+                href={`https://instagram.com/${portfolio.socials.instagram.replace('@', '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`transition-all duration-200 hover:scale-110 ${
+                  isLight ? 'text-neutral-500 hover:text-[var(--accent)]' : 'text-neutral-400 hover:text-[var(--accent)]'
+                }`}
+                title={`Instagram: ${portfolio.socials.instagram}`}
+              >
+                <Instagram className="w-3.5 h-3.5" />
+              </a>
+            )}
+            {portfolio.socials.twitter && (
+              <a 
+                href={`https://twitter.com/${portfolio.socials.twitter.replace('@', '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`transition-all duration-200 hover:scale-110 ${
+                  isLight ? 'text-neutral-500 hover:text-[var(--accent)]' : 'text-neutral-400 hover:text-[var(--accent)]'
+                }`}
+                title={`Twitter / X: ${portfolio.socials.twitter}`}
+              >
+                <Twitter className="w-3.5 h-3.5" />
+              </a>
+            )}
+            {portfolio.socials.website && (
+              <a 
+                href={portfolio.socials.website.startsWith('http') ? portfolio.socials.website : `https://${portfolio.socials.website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`transition-all duration-200 hover:scale-110 ${
+                  isLight ? 'text-neutral-500 hover:text-[var(--accent)]' : 'text-neutral-400 hover:text-[var(--accent)]'
+                }`}
+                title={`Website: ${portfolio.socials.website}`}
+              >
+                <Globe className="w-3.5 h-3.5" />
+              </a>
+            )}
+            {portfolio.socials.github && (
+              <a 
+                href={`https://github.com/${portfolio.socials.github}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`transition-all duration-200 hover:scale-110 ${
+                  isLight ? 'text-neutral-500 hover:text-[var(--accent)]' : 'text-neutral-400 hover:text-[var(--accent)]'
+                }`}
+                title={`GitHub: ${portfolio.socials.github}`}
+              >
+                <Github className="w-3.5 h-3.5" />
+              </a>
+            )}
+          </div>
+        )}
 
         {!isReadOnly && onOpenStudio && (
           <button
@@ -527,6 +705,74 @@ export default function CubeExhibition({
                       <p className={`body-text reveal-init ${isVisible ? 'reveal-active' : ''} mt-4`}>
                         {f.body || 'No description available for this face catalog design.'}
                       </p>
+
+                      {/* Introductory Social networks */}
+                      {i === 0 && portfolio.socials && (portfolio.socials.instagram || portfolio.socials.twitter || portfolio.socials.website || portfolio.socials.github) && (
+                        <div className={`flex flex-wrap gap-2.5 mt-5 mb-2 reveal-init ${isVisible ? 'reveal-active' : ''} ${
+                          isCardRight ? 'justify-end' : 'justify-start'
+                        }`}>
+                          {portfolio.socials.instagram && (
+                            <a 
+                              href={`https://instagram.com/${portfolio.socials.instagram.replace('@', '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`flex items-center gap-1.5 px-3 py-1.5 border rounded font-mono text-[9px] uppercase tracking-wider transition ${
+                                isLight 
+                                  ? 'bg-neutral-100 border-neutral-300 text-neutral-800 hover:border-[var(--accent)] hover:text-[var(--accent)]' 
+                                  : 'bg-neutral-900 border-neutral-800/80 text-neutral-200 hover:border-[var(--accent)] hover:text-[var(--accent)]'
+                              }`}
+                            >
+                              <Instagram className="w-3.5 h-3.5" />
+                              <span>Instagram</span>
+                            </a>
+                          )}
+                          {portfolio.socials.twitter && (
+                            <a 
+                              href={`https://twitter.com/${portfolio.socials.twitter.replace('@', '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`flex items-center gap-1.5 px-3 py-1.5 border rounded font-mono text-[9px] uppercase tracking-wider transition ${
+                                isLight 
+                                  ? 'bg-neutral-100 border-neutral-300 text-neutral-800 hover:border-[var(--accent)] hover:text-[var(--accent)]' 
+                                  : 'bg-neutral-900 border-neutral-800/80 text-neutral-200 hover:border-[var(--accent)] hover:text-[var(--accent)]'
+                              }`}
+                            >
+                              <Twitter className="w-3.5 h-3.5" />
+                              <span>Twitter</span>
+                            </a>
+                          )}
+                          {portfolio.socials.website && (
+                            <a 
+                              href={portfolio.socials.website.startsWith('http') ? portfolio.socials.website : `https://${portfolio.socials.website}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`flex items-center gap-1.5 px-3 py-1.5 border rounded font-mono text-[9px] uppercase tracking-wider transition ${
+                                isLight 
+                                  ? 'bg-neutral-100 border-neutral-300 text-neutral-800 hover:border-[var(--accent)] hover:text-[var(--accent)]' 
+                                  : 'bg-neutral-900 border-neutral-800/80 text-neutral-200 hover:border-[var(--accent)] hover:text-[var(--accent)]'
+                              }`}
+                            >
+                              <Globe className="w-3.5 h-3.5" />
+                              <span>Website</span>
+                            </a>
+                          )}
+                          {portfolio.socials.github && (
+                            <a 
+                              href={`https://github.com/${portfolio.socials.github}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`flex items-center gap-1.5 px-3 py-1.5 border rounded font-mono text-[9px] uppercase tracking-wider transition ${
+                                isLight 
+                                  ? 'bg-neutral-100 border-neutral-300 text-neutral-800 hover:border-[var(--accent)] hover:text-[var(--accent)]' 
+                                  : 'bg-neutral-900 border-neutral-800/80 text-neutral-200 hover:border-[var(--accent)] hover:text-[var(--accent)]'
+                              }`}
+                            >
+                              <Github className="w-3.5 h-3.5" />
+                              <span>GitHub</span>
+                            </a>
+                          )}
+                        </div>
+                      )}
 
                       {/* Face stats row */}
                       {f.stats && f.stats.length > 0 && (
@@ -610,6 +856,72 @@ export default function CubeExhibition({
                         <p className={`body-text reveal-init ${isVisible ? 'reveal-active' : ''}`}>
                           {f.body || 'No description available for this face catalog design.'}
                         </p>
+
+                        {/* Introductory Social networks in Bento Mode */}
+                        {i === 0 && portfolio.socials && (portfolio.socials.instagram || portfolio.socials.twitter || portfolio.socials.website || portfolio.socials.github) && (
+                          <div className={`flex flex-wrap gap-2 mt-4 reveal-init ${isVisible ? 'reveal-active' : ''}`}>
+                            {portfolio.socials.instagram && (
+                              <a 
+                                href={`https://instagram.com/${portfolio.socials.instagram.replace('@', '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`flex items-center gap-1.5 px-2 py-1 border rounded font-mono text-[8.5px] uppercase tracking-wider transition ${
+                                  isLight 
+                                    ? 'bg-neutral-100 border-neutral-300 text-neutral-800 hover:border-[var(--accent)] hover:text-[var(--accent)]' 
+                                    : 'bg-neutral-900 border-neutral-800/80 text-neutral-200 hover:border-[var(--accent)] hover:text-[var(--accent)]'
+                                }`}
+                              >
+                                <Instagram className="w-3 h-3" />
+                                <span>Insta</span>
+                              </a>
+                            )}
+                            {portfolio.socials.twitter && (
+                              <a 
+                                href={`https://twitter.com/${portfolio.socials.twitter.replace('@', '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`flex items-center gap-1.5 px-2 py-1 border rounded font-mono text-[8.5px] uppercase tracking-wider transition ${
+                                  isLight 
+                                    ? 'bg-neutral-100 border-neutral-300 text-neutral-800 hover:border-[var(--accent)] hover:text-[var(--accent)]' 
+                                    : 'bg-neutral-900 border-neutral-800/80 text-neutral-200 hover:border-[var(--accent)] hover:text-[var(--accent)]'
+                                }`}
+                              >
+                                <Twitter className="w-3 h-3" />
+                                <span>Twitter</span>
+                              </a>
+                            )}
+                            {portfolio.socials.website && (
+                              <a 
+                                href={portfolio.socials.website.startsWith('http') ? portfolio.socials.website : `https://${portfolio.socials.website}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`flex items-center gap-1.5 px-2 py-1 border rounded font-mono text-[8.5px] uppercase tracking-wider transition ${
+                                  isLight 
+                                    ? 'bg-neutral-100 border-neutral-300 text-neutral-800 hover:border-[var(--accent)] hover:text-[var(--accent)]' 
+                                    : 'bg-neutral-900 border-neutral-800/80 text-neutral-200 hover:border-[var(--accent)] hover:text-[var(--accent)]'
+                                }`}
+                              >
+                                <Globe className="w-3 h-3" />
+                                <span>Website</span>
+                              </a>
+                            )}
+                            {portfolio.socials.github && (
+                              <a 
+                                href={`https://github.com/${portfolio.socials.github}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`flex items-center gap-1.5 px-2 py-1 border rounded font-mono text-[8.5px] uppercase tracking-wider transition ${
+                                  isLight 
+                                    ? 'bg-neutral-100 border-neutral-300 text-neutral-800 hover:border-[var(--accent)] hover:text-[var(--accent)]' 
+                                    : 'bg-neutral-900 border-neutral-800/80 text-neutral-200 hover:border-[var(--accent)] hover:text-[var(--accent)]'
+                                }`}
+                              >
+                                <Github className="w-3 h-3" />
+                                <span>GitHub</span>
+                              </a>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Bento Box Part 3: Stats Grid */}

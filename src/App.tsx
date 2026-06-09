@@ -36,6 +36,17 @@ const parseUrlExhibit = (): Portfolio | null => {
       showGridLines: s.g !== undefined ? s.g : true,
       cubeGlow: s.w !== undefined ? s.w : true,
       layoutMode: s.lm || 'split',
+      socials: s.soc ? {
+        instagram: s.soc.ig || '',
+        twitter: s.soc.tw || '',
+        website: s.soc.wb || '',
+        github: s.soc.gh || ''
+      } : {
+        instagram: '',
+        twitter: '',
+        website: '',
+        github: ''
+      },
       faces: (s.fc || []).map((face: any, i: number) => ({
         faceName: face.fn || `FACE ${i + 1}`,
         tagline: face.tl || '',

@@ -140,6 +140,12 @@ export default function CreatorStudio({
         g: portfolio.showGridLines,
         w: portfolio.cubeGlow,
         lm: portfolio.layoutMode || 'split',
+        soc: portfolio.socials ? {
+          ig: portfolio.socials.instagram || '',
+          tw: portfolio.socials.twitter || '',
+          wb: portfolio.socials.website || '',
+          gh: portfolio.socials.github || ''
+        } : undefined,
         fc: portfolio.faces.map(face => ({
           fn: face.faceName,
           tl: face.tagline,
@@ -814,6 +820,68 @@ export default function CreatorStudio({
                     className="w-full bg-neutral-900 border border-neutral-800 rounded px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-[var(--accent)] resize-none"
                     rows={2}
                     placeholder="Short summary description"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Social Coordinates metadata */}
+            <div className="space-y-2.5">
+              <label className="font-mono text-[10.5px] uppercase tracking-wider text-neutral-400 block select-none">
+                Artist Social Coordinates & Handles
+              </label>
+              
+              <div className="space-y-3 p-4 bg-neutral-900/30 rounded border border-neutral-800">
+                <div className="space-y-1">
+                  <span className="text-[9px] uppercase font-mono tracking-wider text-neutral-400">Instagram Handle</span>
+                  <input 
+                    type="text"
+                    value={portfolio.socials?.instagram || ''}
+                    onChange={(e) => {
+                      const socials = { ...portfolio.socials, instagram: e.target.value };
+                      onUpdatePortfolio({ ...portfolio, socials });
+                    }}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-[var(--accent)] text-neutral-100"
+                    placeholder="e.g. @luis_martinez_art"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[9px] uppercase font-mono tracking-wider text-neutral-400">Twitter / X Handle</span>
+                  <input 
+                    type="text"
+                    value={portfolio.socials?.twitter || ''}
+                    onChange={(e) => {
+                      const socials = { ...portfolio.socials, twitter: e.target.value };
+                      onUpdatePortfolio({ ...portfolio, socials });
+                    }}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-[var(--accent)] text-neutral-100"
+                    placeholder="e.g. @luismart_art"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[9px] uppercase font-mono tracking-wider text-neutral-400">Website URL</span>
+                  <input 
+                    type="text"
+                    value={portfolio.socials?.website || ''}
+                    onChange={(e) => {
+                      const socials = { ...portfolio.socials, website: e.target.value };
+                      onUpdatePortfolio({ ...portfolio, socials });
+                    }}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-[var(--accent)] text-neutral-100"
+                    placeholder="e.g. https://mywork.art"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[9px] uppercase font-mono tracking-wider text-neutral-400">GitHub Username</span>
+                  <input 
+                    type="text"
+                    value={portfolio.socials?.github || ''}
+                    onChange={(e) => {
+                      const socials = { ...portfolio.socials, github: e.target.value };
+                      onUpdatePortfolio({ ...portfolio, socials });
+                    }}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-[var(--accent)] text-neutral-100"
+                    placeholder="e.g. luismartinezofficial"
                   />
                 </div>
               </div>

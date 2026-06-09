@@ -20,6 +20,13 @@ export type FontPair = 'bebas-mono' | 'space-mono' | 'playfair-inter' | 'inter-s
 
 export type AccentColor = 'amber' | 'emerald' | 'azure' | 'crimson' | 'violet' | 'monochrome';
 
+export interface SocialHandles {
+  instagram?: string;
+  twitter?: string;
+  website?: string;
+  github?: string;
+}
+
 export interface Portfolio {
   id: string;
   name: string;
@@ -31,6 +38,7 @@ export interface Portfolio {
   cubeGlow: boolean;
   faces: FaceConfig[];
   layoutMode?: 'split' | 'bento' | 'brutalist';
+  socials?: SocialHandles;
 }
 
 export interface PresetAsset {
