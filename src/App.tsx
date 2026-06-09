@@ -8,7 +8,7 @@ import { Portfolio, AccentColor, FontPair } from './types';
 import { TEMPLATES } from './data/templates';
 import CubeExhibition from './components/CubeExhibition';
 import CreatorStudio from './components/CreatorStudio';
-import { Palette, ExternalLink, HelpCircle, Check, BookOpen, Layers, Sparkles, QrCode } from 'lucide-react';
+import { Palette, ExternalLink, HelpCircle, Check, BookOpen, Layers, Sparkles, QrCode, Play, Pause } from 'lucide-react';
 import QRCode from 'qrcode';
 
 const LOCAL_STORAGE_KEY_PREFIX = 'myown-media-portfolio-';
@@ -81,6 +81,7 @@ export default function App() {
 
   // Walkthrough Tour State
   const [walkthroughStep, setWalkthroughStep] = useState<number>(-1); // -1 = inactive
+  const [isTourPaused, setIsTourPaused] = useState<boolean>(false);
   const [tourMessage, setTourMessage] = useState<string>('');
   const [cursorState, setCursorState] = useState<{
     x: number;
@@ -130,6 +131,7 @@ export default function App() {
     }
     
     setIsStudioOpen(false); // Make sure studio drawer is closed so the tour can click open!
+    setIsTourPaused(false);
     setTourMessage('');
     setWalkthroughStep(0);
   };
@@ -214,16 +216,16 @@ export default function App() {
 
   // Walkthrough Autosave/Auto-Action Progression
   useEffect(() => {
-    if (walkthroughStep === -1) return;
+    if (walkthroughStep === -1 || isTourPaused) return;
 
     let autoTimer: any;
     let actionTimer: any;
 
     if (walkthroughStep === 0) {
-      // Welcome screen: wait 4s then go to next
+      // Welcome screen: wait 8.0s then go to next
       autoTimer = setTimeout(() => {
         setWalkthroughStep(1);
-      }, 4000);
+      }, 8000);
     } else if (walkthroughStep === 1) {
       // Open Studio drawer
       actionTimer = setTimeout(() => {
@@ -232,8 +234,8 @@ export default function App() {
           setCursorState(prev => ({ ...prev, clicking: false }));
           setIsStudioOpen(true);
           setWalkthroughStep(2);
-        }, 150);
-      }, 1500);
+        }, 300);
+      }, 5500);
     } else if (walkthroughStep === 2) {
       // Choose azure accent color
       actionTimer = setTimeout(() => {
@@ -247,14 +249,18 @@ export default function App() {
             handleUpdatePortfolio({ ...activePortfolio, accentColor: 'azure' });
           }
           setWalkthroughStep(3);
-        }, 150);
-      }, 1500);
+        }, 300);
+      }, 5500);
     } else if (walkthroughStep === 3) {
       // Type "NEO-SPACE"
       actionTimer = setTimeout(() => {
         const textToType = "NEO-SPACE";
         let currentIndex = 0;
         const typingInterval = setInterval(() => {
+          if (isTourPaused) {
+            clearInterval(typingInterval);
+            return;
+          }
           if (currentIndex < textToType.length) {
             currentIndex++;
             const partial = textToType.substring(0, currentIndex);
@@ -263,10 +269,10 @@ export default function App() {
             clearInterval(typingInterval);
             setTimeout(() => {
               setWalkthroughStep(4);
-            }, 800);
+            }, 1800);
           }
-        }, 120);
-      }, 1200);
+        }, 160);
+      }, 4500);
     } else if (walkthroughStep === 4) {
       // Rotate cube (click scene-dot-1)
       actionTimer = setTimeout(() => {
@@ -280,8 +286,8 @@ export default function App() {
             window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
           }
           setWalkthroughStep(5);
-        }, 150);
-      }, 1800);
+        }, 300);
+      }, 6000);
     } else if (walkthroughStep === 5) {
       // Copy shared link
       actionTimer = setTimeout(() => {
@@ -291,8 +297,8 @@ export default function App() {
           const copyBtn = document.querySelector('#studio_copy_link') as HTMLButtonElement;
           if (copyBtn) copyBtn.click();
           setWalkthroughStep(6);
-        }, 150);
-      }, 2000);
+        }, 300);
+      }, 6500);
     } else if (walkthroughStep === 6) {
       // Close studio
       actionTimer = setTimeout(() => {
@@ -302,16 +308,16 @@ export default function App() {
           setIsStudioOpen(false);
           setTimeout(() => {
             setWalkthroughStep(-1);
-          }, 1500);
-        }, 150);
-      }, 2200);
+          }, 2000);
+        }, 300);
+      }, 6500);
     }
 
     return () => {
       clearTimeout(autoTimer);
       clearTimeout(actionTimer);
     };
-  }, [walkthroughStep, activePortfolio]);
+  }, [walkthroughStep, activePortfolio, isTourPaused]);
 
   // System setup or state recovery
   useEffect(() => {
@@ -670,18 +676,30 @@ export default function App() {
           <div className="flex-1 space-y-2 text-left w-full">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 relative">
-                <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-ping absolute" />
-                <span className="w-2 h-2 rounded-full bg-[var(--accent)]" />
-                <span className="text-[10px] tracking-widest text-[var(--accent)] uppercase font-bold pl-1">
-                  AUTOPILOT TOUR
-                </span>
+                {isTourPaused ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-amber-500 absolute animate-pulse" />
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <span className="text-[10px] tracking-widest text-amber-500 uppercase font-bold pl-1">
+                      TOUR PAUSED
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-ping absolute" />
+                    <span className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                    <span className="text-[10px] tracking-widest text-[var(--accent)] uppercase font-bold pl-1">
+                      AUTOPILOT TOUR
+                    </span>
+                  </>
+                )}
               </div>
               <span className="text-[9px] text-neutral-400 font-bold bg-neutral-900 border border-neutral-800 px-1.5 py-0.5 rounded">
                 STEP {walkthroughStep + 1} OF 7
               </span>
             </div>
             
-            <p className="text-[10.5px] leading-relaxed text-zinc-200">
+            <p className="text-[10.5px] leading-relaxed text-zinc-205">
               {tourMessage}
             </p>
 
@@ -694,7 +712,28 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex gap-2 w-full md:w-auto shrink-0 justify-end">
+          <div className="flex gap-1.5 w-full md:w-auto shrink-0 justify-end flex-wrap">
+            <button
+              onClick={() => setIsTourPaused(!isTourPaused)}
+              className={`flex-1 md:flex-initial py-2 px-3 flex items-center justify-center gap-1 border text-[9.5px] font-bold uppercase tracking-wider rounded transition cursor-pointer ${
+                isTourPaused 
+                  ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 shadow-[0_0_8px_rgba(255,255,255,0.05)]'
+                  : 'border-neutral-800 bg-neutral-900 text-neutral-300 hover:border-neutral-700 hover:text-white'
+              }`}
+              title={isTourPaused ? "Resume automated tour progression" : "Pause automated tour progression"}
+            >
+              {isTourPaused ? (
+                <>
+                  <Play className="w-3 h-3 fill-current" />
+                  <span>Resume</span>
+                </>
+              ) : (
+                <>
+                  <Pause className="w-3 h-3" />
+                  <span>Pause</span>
+                </>
+              )}
+            </button>
             {walkthroughStep < 6 && (
               <button
                 onClick={() => setWalkthroughStep(prev => prev + 1)}
