@@ -35,6 +35,7 @@ const parseUrlExhibit = (): Portfolio | null => {
       theme: s.t || 'dark',
       showGridLines: s.g !== undefined ? s.g : true,
       cubeGlow: s.w !== undefined ? s.w : true,
+      layoutMode: s.lm || 'split',
       faces: (s.fc || []).map((face: any, i: number) => ({
         faceName: face.fn || `FACE ${i + 1}`,
         tagline: face.tl || '',

@@ -30,6 +30,7 @@ export interface Portfolio {
   showGridLines: boolean;
   cubeGlow: boolean;
   faces: FaceConfig[];
+  layoutMode?: 'split' | 'bento' | 'brutalist';
 }
 
 export interface PresetAsset {

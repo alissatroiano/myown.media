@@ -323,13 +323,26 @@ export default function CubeExhibition({
     isSelfScrollingRef.current = false;
   };
 
+  const layoutMode = portfolio.layoutMode || 'split';
+  const isLight = portfolio.theme === 'light';
+
   return (
     <div 
       ref={containerRef}
       onMouseDown={handleUserInteract}
       onTouchStart={handleUserInteract}
-      className="relative w-full min-h-screen"
+      className={`relative w-full min-h-screen layout-mode-${layoutMode}`}
     >
+      {/* Brutalist technical viewfinders */}
+      {layoutMode === 'brutalist' && (
+        <>
+          <div className="crosshair crosshair-tl" />
+          <div className="crosshair crosshair-tr" />
+          <div className="crosshair crosshair-bl" />
+          <div className="crosshair crosshair-br" />
+        </>
+      )}
+
       {/* 3D Scene viewport (Fixed back layer) */}
       <div id="scene" aria-hidden="true" className="select-none">
         <div 
@@ -403,11 +416,15 @@ export default function CubeExhibition({
       <button 
         id="theme_toggle"
         onClick={onToggleTheme}
-        className="fixed bottom-8 left-8 z-20 w-10 h-10 border-none bg-neutral-200 dark:bg-neutral-800/60 text-neutral-800 dark:text-[var(--accent)] hover:bg-neutral-300 dark:hover:bg-neutral-700/80 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-sm border border-neutral-300/30 dark:border-neutral-700/40"
+        className={`fixed bottom-8 left-8 z-20 w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-sm border ${
+          isLight
+            ? 'bg-neutral-100 border-neutral-300 text-neutral-800 hover:bg-neutral-200'
+            : 'bg-neutral-900 border-neutral-800/80 text-[var(--accent)] hover:bg-neutral-800'
+        }`}
         title="Toggle contrast modes"
         aria-label="Toggle light/dark mode"
       >
-        {portfolio.theme === 'light' ? (
+        {isLight ? (
           <Moon className="w-4 h-4 text-neutral-800" />
         ) : (
           <Sun className="w-4 h-4 text-[var(--accent)]" />
@@ -424,18 +441,22 @@ export default function CubeExhibition({
 
       {/* Credit anchor or Studio Toggle */}
       <div id="credit" className="fixed right-8 top-1/2 -translate-y-1/2 translate-x-1/2 rotate-90 origin-right-center z-10 hidden lg:block uppercase font-mono tracking-widest text-[9px]">
-        <span className="text-neutral-500">myown.media gallery exhibition / </span>
+        <span className={isLight ? 'text-neutral-600' : 'text-neutral-400'}>myown.media gallery exhibition / </span>
         <span className="text-[var(--accent)] font-medium">{portfolio.name}</span>
       </div>
 
       {/* Responsive floating top bar / logo / action triggers */}
       <header className="fixed top-6 left-8 z-30 flex items-center gap-4 select-none">
         <div className="flex flex-col gap-[2px]">
-          <h1 className="font-mono text-xs tracking-widest font-bold flex items-center gap-2 text-neutral-800 dark:text-neutral-100">
+          <h1 className={`font-mono text-xs tracking-widest font-bold flex items-center gap-2 ${
+            isLight ? 'text-neutral-900' : 'text-neutral-100'
+          }`}>
             myown.media
             <span className="inline-block w-[8px] h-[8px] rounded-full bg-gradient-to-tr from-[#ff3e00] to-[#ffbe00] shadow-[0_0_12px_rgba(255,62,0,0.85)] animate-pulse" />
           </h1>
-          <span className="font-mono text-[9px] text-neutral-500 tracking-wider">
+          <span className={`font-mono text-[9px] tracking-wider ${
+            isLight ? 'text-neutral-600' : 'text-neutral-400'
+          }`}>
             {portfolio.name}
           </span>
         </div>
@@ -443,7 +464,11 @@ export default function CubeExhibition({
         {!isReadOnly && onOpenStudio && (
           <button
             onClick={onOpenStudio}
-            className="flex items-center gap-1.5 py-1 px-3 bg-neutral-900 border border-neutral-700 text-neutral-200 dark:bg-neutral-800 dark:border-neutral-700 hover:bg-neutral-800 dark:hover:bg-neutral-700 hover:border-[var(--accent)] text-[10px] tracking-wider rounded font-mono uppercase transition cursor-pointer shadow-md"
+            className={`flex items-center gap-1.5 py-1 px-3 border text-[10px] tracking-wider rounded font-mono uppercase transition cursor-pointer shadow-md ${
+              isLight 
+                ? 'bg-neutral-100 border-neutral-300 text-neutral-800 hover:bg-neutral-200 hover:border-[var(--accent)]' 
+                : 'bg-neutral-900 border-neutral-800 text-neutral-200 hover:bg-neutral-800 hover:border-[var(--accent)]'
+            }`}
           >
             <Settings className="w-3 h-3 text-[var(--accent)] animate-spin-slow" />
             <span>Studio Panel</span>
@@ -463,90 +488,195 @@ export default function CubeExhibition({
               id={`s${i}`}
               className="gallery-section min-h-screen flex items-center justify-start outline-none"
             >
-              <div 
-                className={`text-card select-text ${isCardRight ? 'card-right' : ''} ${
-                  i === 0 ? 'max-w-[27rem]' : ''
-                }`}
-              >
-                {i > 0 && (
-                  <div className={`h-line-init ${isVisible ? 'h-line-active' : ''}`} />
-                )}
-
-                <div className={`tag reveal-init ${isVisible ? 'reveal-active' : ''} text-[10px] uppercase font-mono tracking-widest text-[var(--accent)] mb-3`}>
-                  {f.tagline || `${String(i).padStart(2, '0')} — Art Series`}
-                </div>
-
-                <h2 className={`card-title reveal-init ${isVisible ? 'reveal-active' : ''} uppercase tracking-tight text-neutral-900 dark:text-neutral-50 leading-none ${
-                  i === 0 ? 'large' : ''
-                }`}>
-                  {f.title ? f.title.split('\n').map((line, lIdx) => (
-                    <React.Fragment key={lIdx}>
-                      {line}
-                      <br />
-                    </React.Fragment>
-                  )) : 'EXHIBITION'}
-                </h2>
-
-                <p className={`body-text reveal-init ${isVisible ? 'reveal-active' : ''} text-xs leading-relaxed font-mono mt-4 text-neutral-600 dark:text-neutral-400`}>
-                  {f.body || 'No description available for this face catalog design.'}
-                </p>
-
-                {/* Face stats row */}
-                {f.stats && f.stats.length > 0 && (
-                  <div className={`stat-row reveal-init ${isVisible ? 'reveal-active' : ''} flex gap-8 flex-wrap mt-6 mb-2 ${
-                    isCardRight ? 'justify-end' : 'justify-start'
-                  }`}>
-                    {f.stats.map((st, sIdx) => {
-                      if (!st.label && !st.value) return null;
-                      return (
-                        <div key={sIdx} className="stat flex flex-col">
-                          <span className="stat-num font-sans text-3xl font-normal text-[var(--accent)] select-all leading-none">{st.value || '-'}</span>
-                          <span className="stat-label font-mono text-[9px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400/60 mt-1">{st.label || 'Metric'}</span>
-                        </div>
-                      );
-                    })}
+              <div className={`w-full flex items-stretch gap-2 ${isCardRight ? 'justify-end ml-auto' : 'justify-start'}`}>
+                
+                {/* Left Brutalist Coordinate strip */}
+                {layoutMode === 'brutalist' && !isCardRight && (
+                  <div className="hidden sm:flex flex-col items-center justify-center border-l border-y border-neutral-800/60 px-2 text-center bg-neutral-950/20 py-4 select-none">
+                    <span className="brutalist-rail">[ SYS.0x{i} // EXH.{i*8 + 12} ]</span>
                   </div>
                 )}
 
-                {/* Multi-directional step guides */}
-                <div className={`cta-row reveal-init ${isVisible ? 'reveal-active' : ''} flex items-center gap-3 mt-6 ${
-                  isCardRight ? 'justify-end' : 'justify-start'
-                }`}>
-                  {i > 0 && (
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        const sections = document.querySelectorAll('.gallery-section');
-                        const prevSection = sections[i - 1];
-                        if (prevSection) {
-                          smoothScrollToY(prevSection.getBoundingClientRect().top + window.scrollY);
-                        }
-                      }}
-                      className="cta-back-button pr-3 py-2 text-[10px]"
-                      aria-label="Back to previous face"
-                    >
-                      <ArrowLeft className="w-3.5 h-3.5" />
-                      <span>Back</span>
-                    </button>
-                  )}
+                <div 
+                  className={`text-card select-text ${isCardRight ? 'card-right' : ''} ${
+                    i === 0 ? 'max-w-[27rem]' : ''
+                  }`}
+                >
+                  {layoutMode !== 'bento' ? (
+                    /* NORMAL AND CINEMATIC SPLIT / BRUTALIST PARTITION STRUCTURE */
+                    <>
+                      {i > 0 && layoutMode === 'split' && (
+                        <div className={`h-line-init ${isVisible ? 'h-line-active' : ''}`} />
+                      )}
 
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const sections = document.querySelectorAll('.gallery-section');
-                      const nextIndex = (i + 1) % portfolio.faces.length;
-                      const nextSection = sections[nextIndex];
-                      if (nextSection) {
-                        smoothScrollToY(nextSection.getBoundingClientRect().top + window.scrollY);
-                      }
-                    }}
-                    className="cta-button py-2 px-4 text-[10px]"
-                    aria-label={i === portfolio.faces.length - 1 ? "Loop back to start" : "Proceed to next slide"}
-                  >
-                    <span>{f.ctaText || (i === portfolio.faces.length - 1 ? 'Begin Again' : 'Turn')}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                      <div className={`tag reveal-init ${isVisible ? 'reveal-active' : ''} text-[10px] uppercase font-mono tracking-widest text-[var(--accent)] mb-3`}>
+                        {f.tagline || `${String(i).padStart(2, '0')} — Art Series`}
+                      </div>
+
+                      <h2 className={`card-title reveal-init ${isVisible ? 'reveal-active' : ''} uppercase tracking-tight leading-none ${
+                        i === 0 ? 'large' : ''
+                      }`}>
+                        {f.title ? f.title.split('\n').map((line, lIdx) => (
+                          <React.Fragment key={lIdx}>
+                            {line}
+                            <br />
+                          </React.Fragment>
+                        )) : 'EXHIBITION'}
+                      </h2>
+
+                      <p className={`body-text reveal-init ${isVisible ? 'reveal-active' : ''} mt-4`}>
+                        {f.body || 'No description available for this face catalog design.'}
+                      </p>
+
+                      {/* Face stats row */}
+                      {f.stats && f.stats.length > 0 && (
+                        <div className={`stat-row reveal-init ${isVisible ? 'reveal-active' : ''} flex gap-8 flex-wrap mt-6 mb-2 ${
+                          isCardRight ? 'justify-end' : 'justify-start'
+                        }`}>
+                          {f.stats.map((st, sIdx) => {
+                            if (!st.label && !st.value) return null;
+                            return (
+                              <div key={sIdx} className="stat flex flex-col">
+                                <span className="stat-num font-sans text-2xl font-normal text-[var(--accent)] select-all leading-none">{st.value || '-'}</span>
+                                <span className="stat-label mt-0.5">{st.label || 'Metric'}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Multi-directional step guides */}
+                      <div className={`cta-row reveal-init ${isVisible ? 'reveal-active' : ''} flex items-center gap-3 mt-6 ${
+                        isCardRight ? 'justify-end' : 'justify-start'
+                      }`}>
+                        {i > 0 && (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              const sections = document.querySelectorAll('.gallery-section');
+                              const prevSection = sections[i - 1];
+                              if (prevSection) {
+                                smoothScrollToY(prevSection.getBoundingClientRect().top + window.scrollY);
+                              }
+                            }}
+                            className="cta-back-button pr-3 py-2 text-[10px]"
+                            aria-label="Back to previous face"
+                          >
+                            <ArrowLeft className="w-3.5 h-3.5" />
+                            <span>Back</span>
+                          </button>
+                        )}
+
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const sections = document.querySelectorAll('.gallery-section');
+                            const nextIndex = (i + 1) % portfolio.faces.length;
+                            const nextSection = sections[nextIndex];
+                            if (nextSection) {
+                              smoothScrollToY(nextSection.getBoundingClientRect().top + window.scrollY);
+                            }
+                          }}
+                          className="cta-button py-2 px-4 text-[10px]"
+                          aria-label={i === portfolio.faces.length - 1 ? "Loop back to start" : "Proceed to next slide"}
+                        >
+                          <span>{f.ctaText || (i === portfolio.faces.length - 1 ? 'Begin Again' : 'Turn')}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    /* BENTO GLASS MODULAR STRUCTURE */
+                    <div className="flex flex-col text-left">
+                      {/* Bento Box Part 1: Header */}
+                      <div className="bento-partition">
+                        <div className={`tag reveal-init ${isVisible ? 'reveal-active' : ''} text-[10px] uppercase font-mono tracking-widest text-[var(--accent)] mb-2`}>
+                          {f.tagline || `${String(i).padStart(2, '0')} — Art Series`}
+                        </div>
+                        <h2 className={`card-title reveal-init ${isVisible ? 'reveal-active' : ''} uppercase tracking-tight leading-none ${
+                          i === 0 ? 'large' : ''
+                        }`}>
+                          {f.title ? f.title.split('\n').map((line, lIdx) => (
+                            <React.Fragment key={lIdx}>
+                              {line}
+                              <br />
+                            </React.Fragment>
+                          )) : 'EXHIBITION'}
+                        </h2>
+                      </div>
+
+                      {/* Bento Box Part 2: Body text description */}
+                      <div className="bento-partition">
+                        <p className={`body-text reveal-init ${isVisible ? 'reveal-active' : ''}`}>
+                          {f.body || 'No description available for this face catalog design.'}
+                        </p>
+                      </div>
+
+                      {/* Bento Box Part 3: Stats Grid */}
+                      {f.stats && f.stats.length > 0 && (
+                        <div className={`bento-stats-grid reveal-init ${isVisible ? 'reveal-active' : ''}`}>
+                          {f.stats.map((st, sIdx) => {
+                            if (!st.label && !st.value) return null;
+                            return (
+                              <div key={sIdx} className="bento-stat-block flex flex-col justify-center">
+                                <span className="stat-num font-sans text-xl font-normal text-[var(--accent)] select-all leading-none">{st.value || '-'}</span>
+                                <span className="stat-label mt-1">{st.label || 'Metric'}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Bento Box Part 4: CTA sliders */}
+                      <div className="bento-partition bento-partition-last flex items-center gap-2 justify-between">
+                        {i > 0 ? (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              const sections = document.querySelectorAll('.gallery-section');
+                              const prevSection = sections[i - 1];
+                              if (prevSection) {
+                                smoothScrollToY(prevSection.getBoundingClientRect().top + window.scrollY);
+                              }
+                            }}
+                            className="px-3 py-1.5 border border-dashed border-neutral-700/60 hover:border-neutral-500 text-neutral-400 hover:text-white rounded font-mono text-[9px] uppercase tracking-wider cursor-pointer flex items-center gap-1.5 transition"
+                            aria-label="Back to previous face"
+                          >
+                            <ArrowLeft className="w-3 h-3" />
+                            <span>Back</span>
+                          </button>
+                        ) : (
+                          <div className="text-[8px] font-mono text-neutral-500 uppercase tracking-widest pl-1">Exhibit Init</div>
+                        )}
+
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const sections = document.querySelectorAll('.gallery-section');
+                            const nextIndex = (i + 1) % portfolio.faces.length;
+                            const nextSection = sections[nextIndex];
+                            if (nextSection) {
+                              smoothScrollToY(nextSection.getBoundingClientRect().top + window.scrollY);
+                            }
+                          }}
+                          className="px-3.5 py-1.5 bg-[var(--accent)] text-neutral-950 font-bold rounded font-mono text-[9px] uppercase tracking-wider cursor-pointer flex items-center gap-1.5 hover:scale-[1.02] active:scale-100 transition shadow"
+                          aria-label={i === portfolio.faces.length - 1 ? "Loop back to start" : "Proceed to next slide"}
+                        >
+                          <span>{f.ctaText || (i === portfolio.faces.length - 1 ? 'Begin Again' : 'Turn')}</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* Right Brutalist Coordinate strip */}
+                {layoutMode === 'brutalist' && isCardRight && (
+                  <div className="hidden sm:flex flex-col items-center justify-center border-r border-y border-neutral-800/60 px-2 text-center bg-neutral-950/20 py-4 select-none">
+                    <span className="brutalist-rail">[ SYS.0x{i} // EXH.{i*8 + 12} ]</span>
+                  </div>
+                )}
+
               </div>
             </section>
           );

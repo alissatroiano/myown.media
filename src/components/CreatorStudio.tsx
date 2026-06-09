@@ -8,7 +8,7 @@ import { Portfolio, FaceConfig, AccentColor, FontPair } from '../types';
 import { STOCK_ART_OPTIONS, TEMPLATES } from '../data/templates';
 import { 
   X, Plus, RefreshCw, Layers, Check, Copy, Share2, Palette, Type, Upload, Link, 
-  Trash2, Sliders, ChevronDown, Sparkles, AlertCircle, FileText, Globe 
+  Trash2, Sliders, ChevronDown, Sparkles, AlertCircle, FileText, Globe, Grid, Columns 
 } from 'lucide-react';
 
 interface CreatorStudioProps {
@@ -139,6 +139,7 @@ export default function CreatorStudio({
         t: portfolio.theme,
         g: portfolio.showGridLines,
         w: portfolio.cubeGlow,
+        lm: portfolio.layoutMode || 'split',
         fc: portfolio.faces.map(face => ({
           fn: face.faceName,
           tl: face.tagline,
@@ -658,6 +659,68 @@ export default function CreatorStudio({
                       <p className="text-[10px] leading-relaxed text-neutral-500 font-mono mt-0.5">
                         {pair.desc}
                       </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Artwork Layout Selection */}
+            <div className="space-y-3">
+              <label className="font-mono text-[10.5px] uppercase tracking-wider text-neutral-400 select-none block flex items-center justify-between">
+                <span>Artwork Exhibition Layout</span>
+                <span className="text-[9px] text-[var(--accent)] font-bold">TechWeek NYC Live Layouts</span>
+              </label>
+
+              <div className="space-y-2">
+                {[
+                  {
+                    id: 'split',
+                    title: 'Cinematic Split-Frame',
+                    source: 'ogBvbEB Pen Inspired',
+                    desc: 'Displaced asymmetry with fine dividing lines, compact metadata rails, and spacious offset layout balancing.',
+                    icon: <Columns className="w-4 h-4 text-neutral-300" />
+                  },
+                  {
+                    id: 'bento',
+                    title: 'Modular Glass Bento',
+                    source: 'qERWZNP Pen Inspired',
+                    desc: 'Glassmorphic panel split into translucent sub-compartments, giving structured micro-grids for mobile screens.',
+                    icon: <Grid className="w-4 h-4 text-neutral-300" />
+                  },
+                  {
+                    id: 'brutalist',
+                    title: 'Stark Brutalist Rail',
+                    source: 'OPLxQWx Pen Inspired',
+                    desc: 'Industrial raw design featuring corner crosshairs, heavy pixelated dividers, and vertical metadata coordinate bars.',
+                    icon: <Layers className="w-4 h-4 text-neutral-300" />
+                  }
+                ].map((l) => {
+                  const isCur = (portfolio.layoutMode || 'split') === l.id;
+                  return (
+                    <button
+                      key={l.id}
+                      onClick={() => onUpdatePortfolio({ ...portfolio, layoutMode: l.id as any })}
+                      className={`w-full p-3.5 rounded border text-left transition cursor-pointer flex gap-3 ${
+                        isCur 
+                          ? 'bg-neutral-900 border-[var(--accent)]' 
+                          : 'bg-neutral-900/40 border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-neutral-300'
+                      }`}
+                    >
+                      <div className={`p-2 rounded flex items-center justify-center self-start ${isCur ? 'bg-[var(--accent)]/10 border border-[var(--accent)]/30' : 'bg-neutral-950 border border-neutral-800'}`}>
+                        {React.cloneElement(l.icon, { className: `w-4 h-4 ${isCur ? 'text-[var(--accent)]' : 'text-neutral-500'}` })}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className={`font-mono text-xs font-semibold tracking-wide ${isCur ? 'text-white' : 'text-neutral-100'}`}>
+                            {l.title}
+                          </span>
+                          <span className="text-[8.5px] font-mono text-neutral-500 tracking-tight">{l.source}</span>
+                        </div>
+                        <p className="text-[10px] leading-relaxed text-neutral-500 font-mono mt-1">
+                          {l.desc}
+                        </p>
+                      </div>
                     </button>
                   );
                 })}
