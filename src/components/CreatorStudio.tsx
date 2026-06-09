@@ -19,6 +19,7 @@ interface CreatorStudioProps {
   onLoadPortfolio: (id: string) => void;
   onSaveNewPortfolio: (name: string) => void;
   onDeletePortfolio: (id: string) => void;
+  walkthroughTab?: 'faces' | 'styling' | 'library' | 'share';
 }
 
 export default function CreatorStudio({
@@ -28,9 +29,17 @@ export default function CreatorStudio({
   savedPortfolios,
   onLoadPortfolio,
   onSaveNewPortfolio,
-  onDeletePortfolio
+  onDeletePortfolio,
+  walkthroughTab
 }: CreatorStudioProps) {
   const [activeTab, setActiveTab] = useState<'faces' | 'styling' | 'library' | 'share'>('faces');
+
+  // Keep tab in sync with walkthrough steps
+  React.useEffect(() => {
+    if (walkthroughTab) {
+      setActiveTab(walkthroughTab);
+    }
+  }, [walkthroughTab]);
   const [activeFaceIdx, setActiveFaceIdx] = useState<number>(0);
   const [copiedLink, setCopiedLink] = useState(false);
   const [newPortfolioName, setNewPortfolioName] = useState('');
@@ -166,12 +175,45 @@ export default function CreatorStudio({
     }
   };
 
+  const fallbackCopy = (text: string) => {
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.top = '0';
+      textarea.style.left = '0';
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      textarea.style.pointerEvents = 'none';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      
+      if (successful) {
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
+      }
+    } catch (err) {
+      console.warn('Fallback copy failed:', err);
+    }
+  };
+
   const handleCopyLink = () => {
     const link = getShareableLink();
-    navigator.clipboard.writeText(link).then(() => {
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-    });
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link)
+        .then(() => {
+          setCopiedLink(true);
+          setTimeout(() => setCopiedLink(false), 2000);
+        })
+        .catch(() => {
+          fallbackCopy(link);
+        });
+    } else {
+      fallbackCopy(link);
+    }
   };
 
   const fontConfigNames: { id: FontPair; label: string; desc: string }[] = [
@@ -1070,6 +1112,19 @@ export default function CreatorStudio({
                 </button>
               </div>
             </div>
+
+            {portfolio.faces.some(face => face.imageSrc?.startsWith('data:image/')) && (
+              <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded space-y-1.5 text-left">
+                <div className="flex items-center gap-1.5 font-mono text-[10.5px] text-amber-500 font-bold uppercase">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>Large Image Upload Detected</span>
+                </div>
+                <p className="text-[9.5px] leading-relaxed text-neutral-400 font-mono">
+                  You have uploaded local files as slide images. Since your entire exhibition state is encrypted directly inside the share link, local files make the link extremely large, which can exceed modern browser limits and cause your changes to fail to load when shared.
+                  <span className="text-amber-500/95 block mt-1 font-semibold">Recommendation: Use web URL image links (like Unsplash) to make your sharing URL compact and 100% reliable.</span>
+                </p>
+              </div>
+            )}
 
             <div className="p-4 rounded border border-neutral-800 bg-neutral-900/30 space-y-3">
               <h4 className="font-mono text-[10.5px] uppercase tracking-wider text-neutral-300 flex items-center gap-1.5 select-none">

@@ -691,17 +691,32 @@ export default function App() {
       )}
 
       {/* Studio configuration drawer panel */}
-      {isStudioOpen && !isReadOnly && (
-        <CreatorStudio
-          portfolio={activePortfolio}
-          onUpdatePortfolio={handleUpdatePortfolio}
-          onClose={() => setIsStudioOpen(false)}
-          savedPortfolios={savedPortfolios}
-          onLoadPortfolio={handleLoadPortfolio}
-          onSaveNewPortfolio={handleSaveNewPortfolio}
-          onDeletePortfolio={handleDeletePortfolio}
-        />
-      )}
+      {isStudioOpen && !isReadOnly && (() => {
+        let walkthroughTab: 'faces' | 'styling' | 'library' | 'share' | undefined = undefined;
+        if (walkthroughStep !== -1) {
+          if (walkthroughStep <= 1) {
+            walkthroughTab = 'faces';
+          } else if (walkthroughStep >= 2 && walkthroughStep <= 4) {
+            walkthroughTab = 'styling';
+          } else if (walkthroughStep === 5) {
+            walkthroughTab = 'styling';
+          } else if (walkthroughStep >= 6) {
+            walkthroughTab = 'share';
+          }
+        }
+        return (
+          <CreatorStudio
+            portfolio={activePortfolio}
+            onUpdatePortfolio={handleUpdatePortfolio}
+            onClose={() => setIsStudioOpen(false)}
+            savedPortfolios={savedPortfolios}
+            onLoadPortfolio={handleLoadPortfolio}
+            onSaveNewPortfolio={handleSaveNewPortfolio}
+            onDeletePortfolio={handleDeletePortfolio}
+            walkthroughTab={walkthroughTab}
+          />
+        );
+      })()}
 
       {/* Background overlay grid lines matching Luis Martinez design aesthetic */}
       <div 
