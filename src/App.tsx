@@ -320,7 +320,7 @@ export default function App() {
 
       {/* Guest QR Code scan popover */}
       {isReadOnly && showQr && (
-        <div className="fixed bottom-[96px] right-6 z-30 w-64 bg-neutral-950/95 border border-neutral-800 p-4 rounded-lg backdrop-blur-md shadow-2xl animate-slide-up-fade font-mono flex flex-col items-center">
+        <div className="fixed bottom-24 left-4 right-4 sm:left-auto sm:bottom-[96px] sm:right-6 z-30 sm:w-64 bg-neutral-950/95 border border-neutral-800 p-4 rounded-lg backdrop-blur-md shadow-2xl animate-slide-up-fade font-mono flex flex-col items-center">
           <div className="text-center mb-3">
             <span className="text-[var(--accent)] font-semibold text-[10px] tracking-wider uppercase block select-none">Exhibition QR Code</span>
             <span className="text-[8.5px] text-neutral-400 leading-normal block mt-1 select-none">Scan with your phone camera to transition this 3D gallery to mobile seamlessly</span>
@@ -353,7 +353,7 @@ export default function App() {
 
       {/* Guest/Preview banner if visiting via sharing hash */}
       {isReadOnly && (
-        <div className="fixed bottom-6 right-6 z-30 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 max-w-sm sm:max-w-none bg-neutral-950/90 border border-neutral-800 p-3.5 rounded-lg backdrop-blur-md shadow-2xl animate-bounce-subtle select-none">
+        <div className="fixed top-20 left-4 right-4 sm:top-auto sm:bottom-6 sm:right-6 sm:left-auto z-30 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 max-w-sm sm:max-w-none bg-neutral-950/90 border border-neutral-800 p-3.5 rounded-lg backdrop-blur-md shadow-2xl animate-bounce-subtle select-none">
           <div className="flex items-center gap-2 font-mono text-[10.5px] text-neutral-300">
             <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0 animate-pulse" />
             <span>Viewing as guest /</span>

@@ -262,13 +262,7 @@ section.gallery-section {
   section.gallery-section {
     min-height: 100vh;
     align-items: flex-end;
-    padding: 0 1rem 3rem;
-  }
-  
-  #s0.gallery-section {
-    min-height: 100vh;
-    align-items: center;
-    padding: 2rem 1rem;
+    padding: 0 1.25rem 6rem;
   }
 }
 

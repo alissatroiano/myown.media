@@ -384,7 +384,7 @@ export default function CubeExhibition({
       </div>
 
       {/* Floating HUD Overlays */}
-      <div id="hud" className="fixed top-8 right-8 z-20 text-right pointer-events-none select-none">
+      <div id="hud" className="fixed top-4 right-4 sm:top-8 sm:right-8 z-20 text-right pointer-events-none select-none">
         <div ref={hudPctRef} className="hud-label font-bold text-xs">000%</div>
         <div className="progress-bar w-24 h-[1px] bg-neutral-700 dark:bg-neutral-800 relative overflow-hidden mt-1 ml-auto">
           <div ref={progFillRef} className="absolute inset-y-0 left-0 w-0 bg-[var(--accent)] transition-all duration-75" />
@@ -416,7 +416,7 @@ export default function CubeExhibition({
       <button 
         id="theme_toggle"
         onClick={onToggleTheme}
-        className={`fixed bottom-8 left-8 z-20 w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-sm border ${
+        className={`fixed bottom-4 left-4 sm:bottom-8 sm:left-8 z-20 w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-sm border ${
           isLight
             ? 'bg-neutral-100 border-neutral-300 text-neutral-800 hover:bg-neutral-200'
             : 'bg-neutral-900 border-neutral-800/80 text-[var(--accent)] hover:bg-neutral-800'
@@ -446,7 +446,7 @@ export default function CubeExhibition({
       </div>
 
       {/* Responsive floating top bar / logo / action triggers */}
-      <header className="fixed top-6 left-8 z-30 flex items-center gap-4 select-none">
+      <header className="fixed top-4 left-4 sm:top-6 sm:left-8 z-30 flex items-center gap-4 select-none">
         <div className="flex flex-col gap-[2px]">
           <h1 className={`font-mono text-xs tracking-widest font-bold flex items-center gap-2 ${
             isLight ? 'text-neutral-900' : 'text-neutral-100'
