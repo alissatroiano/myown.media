@@ -17,12 +17,27 @@ const PORTFOLIO_INDEX_KEY = 'myown-media-index';
 // Decode custom state from URL hash
 const parseUrlExhibit = (): Portfolio | null => {
   try {
-    const hash = window.location.hash;
-    if (!hash || !hash.startsWith('#exhibit=')) return null;
-    const base64Str = hash.split('#exhibit=')[1];
+    const hash = window.location.hash || window.location.search;
+    if (!hash || !hash.includes('exhibit=')) return null;
+    
+    let base64Str = '';
+    if (hash.includes('exhibit=')) {
+      base64Str = hash.split('exhibit=')[1];
+    }
     if (!base64Str) return null;
 
-    const decodedStr = decodeURIComponent(escape(window.atob(base64Str)));
+    // Clean potential trailing fragment/query artifacts
+    base64Str = base64Str.split('&')[0].split('?')[0];
+
+    // Decode URL-safe base64 replacements
+    let cleanedBase64 = base64Str.replace(/-/g, '+').replace(/_/g, '/');
+    
+    // Add missing padding characters
+    while (cleanedBase64.length % 4 !== 0) {
+      cleanedBase64 += '=';
+    }
+
+    const decodedStr = decodeURIComponent(escape(window.atob(cleanedBase64)));
     const s = JSON.parse(decodedStr);
     
     // Safely structure and return inflated portfolio
@@ -618,7 +633,7 @@ export default function App() {
 
       {/* Guest QR Code scan popover */}
       {isReadOnly && showQr && (
-        <div className="fixed bottom-24 left-4 right-4 sm:left-auto sm:bottom-[96px] sm:right-6 z-30 sm:w-64 bg-neutral-950/95 border border-neutral-800 p-4 rounded-lg backdrop-blur-md shadow-2xl animate-slide-up-fade font-mono flex flex-col items-center">
+        <div className="fixed bottom-28 left-4 right-4 sm:left-auto sm:bottom-[100px] sm:right-6 z-[40] sm:w-64 bg-neutral-950/95 border border-neutral-800 p-4 rounded-lg backdrop-blur-md shadow-2xl animate-slide-up-fade font-mono flex flex-col items-center">
           <div className="text-center mb-3">
             <span className="text-[var(--accent)] font-semibold text-[10px] tracking-wider uppercase block select-none">Exhibition QR Code</span>
             <span className="text-[8.5px] text-neutral-400 leading-normal block mt-1 select-none">Scan with your phone camera to transition this 3D gallery to mobile seamlessly</span>
@@ -651,7 +666,7 @@ export default function App() {
 
       {/* Guest/Preview banner if visiting via sharing hash */}
       {isReadOnly && (
-        <div className="fixed top-20 left-4 right-4 sm:top-auto sm:bottom-6 sm:right-6 sm:left-auto z-30 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 max-w-sm sm:max-w-none bg-neutral-950/90 border border-neutral-800 p-3.5 rounded-lg backdrop-blur-md shadow-2xl animate-bounce-subtle select-none">
+        <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-[40] flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 max-w-sm sm:max-w-none bg-neutral-950/95 border border-neutral-800 p-3.5 rounded-lg backdrop-blur-md shadow-2xl animate-bounce-subtle select-none">
           <div className="flex items-center gap-2 font-mono text-[10.5px] text-neutral-300">
             <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0 animate-pulse" />
             <span>Viewing as guest /</span>
