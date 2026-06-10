@@ -10,6 +10,8 @@ import CubeExhibition from './components/CubeExhibition';
 import CreatorStudio from './components/CreatorStudio';
 import { Palette, ExternalLink, HelpCircle, Check, BookOpen, Layers, Sparkles, QrCode, Play, Pause } from 'lucide-react';
 import QRCode from 'qrcode';
+import { doc, getDoc } from 'firebase/firestore';
+import { db, isFirebaseConfigured } from './firebase';
 
 const LOCAL_STORAGE_KEY_PREFIX = 'myown-media-portfolio-';
 const PORTFOLIO_INDEX_KEY = 'myown-media-index';

@@ -10,6 +10,9 @@ import {
   X, Plus, RefreshCw, Layers, Check, Copy, Share2, Palette, Type, Upload, Link, 
   Trash2, Sliders, ChevronDown, Sparkles, AlertCircle, FileText, Globe, Grid, Columns 
 } from 'lucide-react';
+import { db, storage, isFirebaseConfigured } from '../firebase';
+import { doc, collection, setDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 interface CreatorStudioProps {
   portfolio: Portfolio;
@@ -47,6 +50,137 @@ export default function CreatorStudio({
   const [imageInputMode, setImageInputMode] = useState<'file' | 'url'>('url');
   const [imageUrlBuffer, setImageUrlBuffer] = useState('');
   const [compressionLoading, setCompressionLoading] = useState(false);
+
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [cloudSharedUrl, setCloudSharedUrl] = useState<string | null>(null);
+  const [copiedCloudLink, setCopiedCloudLink] = useState(false);
+
+  const base64ToBlob = (base64: string): Blob => {
+    const parts = base64.split(';base64,');
+    const contentType = parts[0].split(':')[1];
+    const raw = window.atob(parts[1]);
+    const rawLength = raw.length;
+    const uInt8Array = new Uint8Array(rawLength);
+    for (let i = 0; i < rawLength; ++i) {
+      uInt8Array[i] = raw.charCodeAt(i);
+    }
+    return new Blob([uInt8Array], { type: contentType });
+  };
+
+  const handlePublishToCloud = async () => {
+    if (!isFirebaseConfigured || !db) {
+      setPublishError("Firebase is not configured in environment variables.");
+      return;
+    }
+
+    setPublishing(true);
+    setPublishError(null);
+    setCloudSharedUrl(null);
+
+    try {
+      const newDocRef = doc(collection(db, 'exhibitions'));
+      const cloudId = newDocRef.id;
+
+      const updatedFaces = await Promise.all(
+        portfolio.faces.map(async (face, index) => {
+          if (face.imageSrc && face.imageSrc.startsWith('data:image/') && storage) {
+            try {
+              const blob = base64ToBlob(face.imageSrc);
+              const storageRef = ref(storage, `exhibitions/${cloudId}/face_${index}.jpg`);
+              const snapshot = await uploadBytes(storageRef, blob);
+              const downloadUrl = await getDownloadURL(snapshot.ref);
+              return { ...face, imageSrc: downloadUrl };
+            } catch (err) {
+              console.error(`Failed to upload face_${index} image:`, err);
+              throw new Error(`Failed to upload artwork image for face ${index + 1}.`);
+            }
+          }
+          return face;
+        })
+      );
+
+      const cloudPortfolioData = {
+        name: portfolio.name,
+        description: portfolio.description || '',
+        accentColor: portfolio.accentColor,
+        fontPair: portfolio.fontPair,
+        theme: portfolio.theme,
+        showGridLines: portfolio.showGridLines,
+        cubeGlow: portfolio.cubeGlow,
+        layoutMode: portfolio.layoutMode || 'split',
+        socials: portfolio.socials || { instagram: '', twitter: '', website: '', github: '' },
+        faces: updatedFaces.map(face => ({
+          faceName: face.faceName,
+          tagline: face.tagline || '',
+          title: face.title || '',
+          body: face.body || '',
+          imageSrc: face.imageSrc || '',
+          stats: face.stats.map(s => ({ label: s.label, value: s.value })),
+          ctaText: face.ctaText || 'Turn'
+        })),
+        createdAt: new Date().toISOString()
+      };
+
+      await setDoc(newDocRef, cloudPortfolioData);
+
+      const finalPortfolio: Portfolio = {
+        ...portfolio,
+        faces: updatedFaces
+      };
+      onUpdatePortfolio(finalPortfolio);
+
+      const appBaseUrl = window.location.origin + window.location.pathname;
+      const shortUrl = `${appBaseUrl}?id=${cloudId}`;
+      setCloudSharedUrl(shortUrl);
+    } catch (err: any) {
+      console.error("Cloud publish error:", err);
+      setPublishError(err.message || "An unexpected error occurred while publishing.");
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const handleCopyCloudLink = () => {
+    if (!cloudSharedUrl) return;
+    const fallbackCopyCloud = (text: string) => {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.top = '0';
+        textarea.style.left = '0';
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        textarea.style.pointerEvents = 'none';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        
+        if (successful) {
+          setCopiedCloudLink(true);
+          setTimeout(() => setCopiedCloudLink(false), 2000);
+        }
+      } catch (err) {
+        console.warn('Fallback copy cloud failed:', err);
+      }
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(cloudSharedUrl)
+        .then(() => {
+          setCopiedCloudLink(true);
+          setTimeout(() => setCopiedCloudLink(false), 2000);
+        })
+        .catch(() => {
+          fallbackCopyCloud(cloudSharedUrl);
+        });
+    } else {
+      fallbackCopyCloud(cloudSharedUrl);
+    }
+  };
 
   const activeFace = portfolio.faces[activeFaceIdx] || portfolio.faces[0];
 
@@ -1078,14 +1212,85 @@ export default function CreatorStudio({
               <Globe className="w-10 h-10 text-[var(--accent)] mx-auto animate-pulse" />
               <h3 className="font-sans text-lg font-bold tracking-tight text-neutral-100">Live Web Presence</h3>
               <p className="text-[11px] leading-relaxed text-neutral-400 font-mono">
-                No database or deployment configuration needed. Any changes you make are instantly baked directly into a secure encrypted sharing link!
+                Publish your 3D gallery to the cloud via Firebase or share it instantly as a serverless URL hash.
               </p>
             </div>
 
-            {/* Action panel */}
+            {/* Firebase Cloud Save Integration */}
+            <div className="space-y-3 p-4 rounded border border-neutral-800 bg-neutral-900/30">
+              <h4 className="font-mono text-[10.5px] uppercase tracking-wider text-neutral-300 flex items-center gap-1.5 font-bold">
+                <Layers className="w-4 h-4 text-[var(--accent)]" />
+                <span>Cloud Storage (Firebase)</span>
+              </h4>
+              
+              {!isFirebaseConfigured ? (
+                <div className="text-[10px] leading-relaxed text-neutral-400 font-mono space-y-2">
+                  <p className="text-amber-500 font-semibold uppercase">Cloud Persistence Offline</p>
+                  <p>Firebase variables are not set in the environment. Set `VITE_FIREBASE_API_KEY`, etc. in `.env` or your hosting provider dashboard to enable direct cloud sharing links.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-[10px] leading-relaxed text-neutral-400 font-mono">
+                    Save your exhibition directly to the database. All base64 images will be converted to public CDN image URLs automatically, creating compact sharing links.
+                  </p>
+
+                  {cloudSharedUrl ? (
+                    <div className="space-y-2.5">
+                      <div className="p-2.5 bg-neutral-950 border border-neutral-800 rounded font-mono text-[10px] break-all max-h-[80px] overflow-y-auto text-green-400 text-left select-all">
+                        {cloudSharedUrl}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleCopyCloudLink}
+                        className="w-full py-2.5 px-3 bg-green-500 text-neutral-950 border border-transparent rounded text-[11px] font-mono uppercase font-bold tracking-wider cursor-pointer hover:shadow-lg active:scale-[0.99] flex items-center justify-center gap-1.5"
+                      >
+                        {copiedCloudLink ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            <span>Copied Cloud Link!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4" />
+                            <span>Copy Shortened Cloud Link</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handlePublishToCloud}
+                      disabled={publishing}
+                      className="w-full py-2.5 px-3 bg-[var(--accent)] border border-transparent rounded text-[11px] font-mono uppercase font-bold tracking-wider cursor-pointer text-neutral-950 hover:brightness-105 active:scale-[0.99] flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    >
+                      {publishing ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Publishing to Cloud...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Globe className="w-4 h-4" />
+                          <span>Publish to Firebase</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  {publishError && (
+                    <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 rounded text-[9.5px] text-rose-400 font-mono">
+                      Error: {publishError}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Serverless Hash Sharing Panel */}
             <div className="space-y-3">
               <h4 className="font-mono text-[10.5px] uppercase tracking-wider text-neutral-400 select-none">
-                Share exhibition link
+                Share serverless URL hash
               </h4>
               
               <div className="p-3 bg-neutral-950 border border-neutral-800 rounded font-mono text-[10px] break-all max-h-[140px] overflow-y-auto text-neutral-400 text-left select-all">
@@ -1096,16 +1301,16 @@ export default function CreatorStudio({
                 <button
                   id="studio_copy_link"
                   onClick={handleCopyLink}
-                  className="flex-1 py-3 px-4 bg-[var(--accent)] border border-transparent rounded text-xs tracking-wider font-mono uppercase transition cursor-pointer text-neutral-950 font-bold flex items-center justify-center gap-1.5 hover:shadow-lg hover:brightness-105 active:scale-[0.99]"
+                  className="flex-1 py-3 px-4 bg-neutral-900 border border-neutral-800 rounded text-xs tracking-wider font-mono uppercase transition cursor-pointer text-neutral-200 font-bold flex items-center justify-center gap-1.5 hover:bg-neutral-800 hover:border-neutral-700 active:scale-[0.99]"
                 >
                   {copiedLink ? (
                     <>
-                      <Check className="w-4 h-4 text-neutral-950" />
+                      <Check className="w-4 h-4 text-green-500" />
                       <span>Copied to Clipboard!</span>
                     </>
                   ) : (
                     <>
-                      <Copy className="w-4 h-4 text-neutral-950" />
+                      <Copy className="w-4 h-4 text-neutral-400" />
                       <span>Copy Encoded Sharing Link</span>
                     </>
                   )}
@@ -1121,7 +1326,7 @@ export default function CreatorStudio({
                 </div>
                 <p className="text-[9.5px] leading-relaxed text-neutral-400 font-mono">
                   You have uploaded local files as slide images. Since your entire exhibition state is encrypted directly inside the share link, local files make the link extremely large, which can exceed modern browser limits and cause your changes to fail to load when shared.
-                  <span className="text-amber-500/95 block mt-1 font-semibold">Recommendation: Use web URL image links (like Unsplash) to make your sharing URL compact and 100% reliable.</span>
+                  <span className="text-amber-500/95 block mt-1 font-semibold">Recommendation: Publish to Cloud (Firebase) above to host images and get short sharing links!</span>
                 </p>
               </div>
             )}
