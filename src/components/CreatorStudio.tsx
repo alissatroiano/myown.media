@@ -8,7 +8,7 @@ import { Portfolio, FaceConfig, AccentColor, FontPair } from '../types';
 import { STOCK_ART_OPTIONS, TEMPLATES } from '../data/templates';
 import { 
   X, Plus, RefreshCw, Layers, Check, Copy, Share2, Palette, Type, Upload, Link, 
-  Trash2, Sliders, ChevronDown, Sparkles, AlertCircle, FileText, Globe 
+  Trash2, Sliders, ChevronDown, Sparkles, AlertCircle, FileText, Globe, Grid, Columns 
 } from 'lucide-react';
 
 interface CreatorStudioProps {
@@ -19,6 +19,7 @@ interface CreatorStudioProps {
   onLoadPortfolio: (id: string) => void;
   onSaveNewPortfolio: (name: string) => void;
   onDeletePortfolio: (id: string) => void;
+  walkthroughTab?: 'faces' | 'styling' | 'library' | 'share';
 }
 
 export default function CreatorStudio({
@@ -28,9 +29,17 @@ export default function CreatorStudio({
   savedPortfolios,
   onLoadPortfolio,
   onSaveNewPortfolio,
-  onDeletePortfolio
+  onDeletePortfolio,
+  walkthroughTab
 }: CreatorStudioProps) {
   const [activeTab, setActiveTab] = useState<'faces' | 'styling' | 'library' | 'share'>('faces');
+
+  // Keep tab in sync with walkthrough steps
+  React.useEffect(() => {
+    if (walkthroughTab) {
+      setActiveTab(walkthroughTab);
+    }
+  }, [walkthroughTab]);
   const [activeFaceIdx, setActiveFaceIdx] = useState<number>(0);
   const [copiedLink, setCopiedLink] = useState(false);
   const [newPortfolioName, setNewPortfolioName] = useState('');
@@ -139,6 +148,13 @@ export default function CreatorStudio({
         t: portfolio.theme,
         g: portfolio.showGridLines,
         w: portfolio.cubeGlow,
+        lm: portfolio.layoutMode || 'split',
+        soc: portfolio.socials ? {
+          ig: portfolio.socials.instagram || '',
+          tw: portfolio.socials.twitter || '',
+          wb: portfolio.socials.website || '',
+          gh: portfolio.socials.github || ''
+        } : undefined,
         fc: portfolio.faces.map(face => ({
           fn: face.faceName,
           tl: face.tagline,
@@ -159,12 +175,45 @@ export default function CreatorStudio({
     }
   };
 
+  const fallbackCopy = (text: string) => {
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.top = '0';
+      textarea.style.left = '0';
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      textarea.style.pointerEvents = 'none';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      
+      if (successful) {
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
+      }
+    } catch (err) {
+      console.warn('Fallback copy failed:', err);
+    }
+  };
+
   const handleCopyLink = () => {
     const link = getShareableLink();
-    navigator.clipboard.writeText(link).then(() => {
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-    });
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link)
+        .then(() => {
+          setCopiedLink(true);
+          setTimeout(() => setCopiedLink(false), 2000);
+        })
+        .catch(() => {
+          fallbackCopy(link);
+        });
+    } else {
+      fallbackCopy(link);
+    }
   };
 
   const fontConfigNames: { id: FontPair; label: string; desc: string }[] = [
@@ -239,6 +288,7 @@ export default function CreatorStudio({
           <span className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[9px] px-1.5 py-0.5 rounded font-mono">beta</span>
         </div>
         <button 
+          id="studio_close"
           onClick={onClose}
           className="p-1 px-1.5 hover:bg-neutral-800 rounded text-neutral-400 hover:text-neutral-100 transition cursor-pointer"
           aria-label="Close panel"
@@ -258,24 +308,28 @@ export default function CreatorStudio({
       {/* Tab Selectors */}
       <div className="flex border-b border-neutral-800 text-xs font-mono">
         <button 
+          id="studio_tab_faces"
           onClick={() => { setActiveTab('faces'); setAssetSelectorOpen(false); }}
           className={`flex-1 py-3 text-center border-b-2 transition cursor-pointer ${activeTab === 'faces' ? 'border-[var(--accent)] text-[var(--accent)] bg-neutral-900/30' : 'border-transparent text-neutral-400 hover:text-neutral-200'}`}
         >
           Faces ({portfolio.faces.length})
         </button>
         <button 
+          id="studio_tab_styling"
           onClick={() => { setActiveTab('styling'); setAssetSelectorOpen(false); }}
           className={`flex-1 py-3 text-center border-b-2 transition cursor-pointer ${activeTab === 'styling' ? 'border-[var(--accent)] text-[var(--accent)] bg-neutral-900/30' : 'border-transparent text-neutral-400 hover:text-neutral-200'}`}
         >
           Styling
         </button>
         <button 
+          id="studio_tab_library"
           onClick={() => { setActiveTab('library'); setAssetSelectorOpen(false); }}
           className={`flex-1 py-3 text-center border-b-2 transition cursor-pointer ${activeTab === 'library' ? 'border-[var(--accent)] text-[var(--accent)] bg-neutral-900/30' : 'border-transparent text-neutral-400 hover:text-neutral-200'}`}
         >
           Exhibits
         </button>
         <button 
+          id="studio_tab_share"
           onClick={() => { setActiveTab('share'); setAssetSelectorOpen(false); }}
           className={`flex-1 py-3 text-center border-b-2 transition cursor-pointer ${activeTab === 'share' ? 'border-[var(--accent)] text-[var(--accent)] bg-neutral-900/30' : 'border-transparent text-neutral-400 hover:text-neutral-200'}`}
         >
@@ -615,6 +669,7 @@ export default function CreatorStudio({
                   return (
                     <button
                       key={acc.id}
+                      id={`accent-btn-${acc.id}`}
                       onClick={() => onUpdatePortfolio({ ...portfolio, accentColor: acc.id })}
                       className={`p-2.5 rounded border text-left flex items-center gap-2 transition cursor-pointer ${
                         isCur 
@@ -658,6 +713,68 @@ export default function CreatorStudio({
                       <p className="text-[10px] leading-relaxed text-neutral-500 font-mono mt-0.5">
                         {pair.desc}
                       </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Artwork Layout Selection */}
+            <div className="space-y-3">
+              <label className="font-mono text-[10.5px] uppercase tracking-wider text-neutral-400 select-none block flex items-center justify-between">
+                <span>Artwork Exhibition Layout</span>
+                <span className="text-[9px] text-[var(--accent)] font-bold">TechWeek NYC Live Layouts</span>
+              </label>
+
+              <div className="space-y-2">
+                {[
+                  {
+                    id: 'split',
+                    title: 'Cinematic Split-Frame',
+                    source: 'ogBvbEB Pen Inspired',
+                    desc: 'Displaced asymmetry with fine dividing lines, compact metadata rails, and spacious offset layout balancing.',
+                    icon: <Columns className="w-4 h-4 text-neutral-300" />
+                  },
+                  {
+                    id: 'bento',
+                    title: 'Modular Glass Bento',
+                    source: 'qERWZNP Pen Inspired',
+                    desc: 'Glassmorphic panel split into translucent sub-compartments, giving structured micro-grids for mobile screens.',
+                    icon: <Grid className="w-4 h-4 text-neutral-300" />
+                  },
+                  {
+                    id: 'brutalist',
+                    title: 'Stark Brutalist Rail',
+                    source: 'OPLxQWx Pen Inspired',
+                    desc: 'Industrial raw design featuring corner crosshairs, heavy pixelated dividers, and vertical metadata coordinate bars.',
+                    icon: <Layers className="w-4 h-4 text-neutral-300" />
+                  }
+                ].map((l) => {
+                  const isCur = (portfolio.layoutMode || 'split') === l.id;
+                  return (
+                    <button
+                      key={l.id}
+                      onClick={() => onUpdatePortfolio({ ...portfolio, layoutMode: l.id as any })}
+                      className={`w-full p-3.5 rounded border text-left transition cursor-pointer flex gap-3 ${
+                        isCur 
+                          ? 'bg-neutral-900 border-[var(--accent)]' 
+                          : 'bg-neutral-900/40 border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-neutral-300'
+                      }`}
+                    >
+                      <div className={`p-2 rounded flex items-center justify-center self-start ${isCur ? 'bg-[var(--accent)]/10 border border-[var(--accent)]/30' : 'bg-neutral-950 border border-neutral-800'}`}>
+                        {React.cloneElement(l.icon, { className: `w-4 h-4 ${isCur ? 'text-[var(--accent)]' : 'text-neutral-500'}` })}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className={`font-mono text-xs font-semibold tracking-wide ${isCur ? 'text-white' : 'text-neutral-100'}`}>
+                            {l.title}
+                          </span>
+                          <span className="text-[8.5px] font-mono text-neutral-500 tracking-tight">{l.source}</span>
+                        </div>
+                        <p className="text-[10px] leading-relaxed text-neutral-500 font-mono mt-1">
+                          {l.desc}
+                        </p>
+                      </div>
                     </button>
                   );
                 })}
@@ -736,6 +853,7 @@ export default function CreatorStudio({
                 <div className="space-y-1">
                   <span className="text-[9px] uppercase font-mono tracking-wider text-neutral-400">Show Title</span>
                   <input 
+                    id="studio_exhibit_name"
                     type="text"
                     value={portfolio.name}
                     onChange={(e) => onUpdatePortfolio({ ...portfolio, name: e.target.value })}
@@ -751,6 +869,68 @@ export default function CreatorStudio({
                     className="w-full bg-neutral-900 border border-neutral-800 rounded px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-[var(--accent)] resize-none"
                     rows={2}
                     placeholder="Short summary description"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Social Coordinates metadata */}
+            <div className="space-y-2.5">
+              <label className="font-mono text-[10.5px] uppercase tracking-wider text-neutral-400 block select-none">
+                Artist Social Coordinates & Handles
+              </label>
+              
+              <div className="space-y-3 p-4 bg-neutral-900/30 rounded border border-neutral-800">
+                <div className="space-y-1">
+                  <span className="text-[9px] uppercase font-mono tracking-wider text-neutral-400">Instagram Handle</span>
+                  <input 
+                    type="text"
+                    value={portfolio.socials?.instagram || ''}
+                    onChange={(e) => {
+                      const socials = { ...portfolio.socials, instagram: e.target.value };
+                      onUpdatePortfolio({ ...portfolio, socials });
+                    }}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-[var(--accent)] text-neutral-100"
+                    placeholder="e.g. @luis_martinez_art"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[9px] uppercase font-mono tracking-wider text-neutral-400">Twitter / X Handle</span>
+                  <input 
+                    type="text"
+                    value={portfolio.socials?.twitter || ''}
+                    onChange={(e) => {
+                      const socials = { ...portfolio.socials, twitter: e.target.value };
+                      onUpdatePortfolio({ ...portfolio, socials });
+                    }}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-[var(--accent)] text-neutral-100"
+                    placeholder="e.g. @luismart_art"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[9px] uppercase font-mono tracking-wider text-neutral-400">Website URL</span>
+                  <input 
+                    type="text"
+                    value={portfolio.socials?.website || ''}
+                    onChange={(e) => {
+                      const socials = { ...portfolio.socials, website: e.target.value };
+                      onUpdatePortfolio({ ...portfolio, socials });
+                    }}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-[var(--accent)] text-neutral-100"
+                    placeholder="e.g. https://mywork.art"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[9px] uppercase font-mono tracking-wider text-neutral-400">GitHub Username</span>
+                  <input 
+                    type="text"
+                    value={portfolio.socials?.github || ''}
+                    onChange={(e) => {
+                      const socials = { ...portfolio.socials, github: e.target.value };
+                      onUpdatePortfolio({ ...portfolio, socials });
+                    }}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-[var(--accent)] text-neutral-100"
+                    placeholder="e.g. luismartinezofficial"
                   />
                 </div>
               </div>
@@ -914,6 +1094,7 @@ export default function CreatorStudio({
 
               <div className="flex gap-2">
                 <button
+                  id="studio_copy_link"
                   onClick={handleCopyLink}
                   className="flex-1 py-3 px-4 bg-[var(--accent)] border border-transparent rounded text-xs tracking-wider font-mono uppercase transition cursor-pointer text-neutral-950 font-bold flex items-center justify-center gap-1.5 hover:shadow-lg hover:brightness-105 active:scale-[0.99]"
                 >
@@ -931,6 +1112,19 @@ export default function CreatorStudio({
                 </button>
               </div>
             </div>
+
+            {portfolio.faces.some(face => face.imageSrc?.startsWith('data:image/')) && (
+              <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded space-y-1.5 text-left">
+                <div className="flex items-center gap-1.5 font-mono text-[10.5px] text-amber-500 font-bold uppercase">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>Large Image Upload Detected</span>
+                </div>
+                <p className="text-[9.5px] leading-relaxed text-neutral-400 font-mono">
+                  You have uploaded local files as slide images. Since your entire exhibition state is encrypted directly inside the share link, local files make the link extremely large, which can exceed modern browser limits and cause your changes to fail to load when shared.
+                  <span className="text-amber-500/95 block mt-1 font-semibold">Recommendation: Use web URL image links (like Unsplash) to make your sharing URL compact and 100% reliable.</span>
+                </p>
+              </div>
+            )}
 
             <div className="p-4 rounded border border-neutral-800 bg-neutral-900/30 space-y-3">
               <h4 className="font-mono text-[10.5px] uppercase tracking-wider text-neutral-300 flex items-center gap-1.5 select-none">
