@@ -10,6 +10,7 @@ import {
   X, Plus, RefreshCw, Layers, Check, Copy, Share2, Palette, Type, Upload, Link, 
   Trash2, Sliders, ChevronDown, Sparkles, AlertCircle, FileText, Globe, Grid, Columns 
 } from 'lucide-react';
+import { User } from 'firebase/auth';
 
 interface CreatorStudioProps {
   portfolio: Portfolio;
@@ -20,6 +21,14 @@ interface CreatorStudioProps {
   onSaveNewPortfolio: (name: string) => void;
   onDeletePortfolio: (id: string) => void;
   walkthroughTab?: 'faces' | 'styling' | 'library' | 'share';
+  currentUser: User | null;
+  isAuthLoading: boolean;
+  cloudPortfolios: Portfolio[];
+  isCloudLoading: boolean;
+  onGoogleSignIn: () => void;
+  onSignOut: () => void;
+  onSaveToCloud: () => Promise<void>;
+  onCloudDelete: (id: string) => Promise<void>;
 }
 
 export default function CreatorStudio({
@@ -30,7 +39,15 @@ export default function CreatorStudio({
   onLoadPortfolio,
   onSaveNewPortfolio,
   onDeletePortfolio,
-  walkthroughTab
+  walkthroughTab,
+  currentUser,
+  isAuthLoading,
+  cloudPortfolios,
+  isCloudLoading,
+  onGoogleSignIn,
+  onSignOut,
+  onSaveToCloud,
+  onCloudDelete
 }: CreatorStudioProps) {
   const [activeTab, setActiveTab] = useState<'faces' | 'styling' | 'library' | 'share'>('faces');
 
@@ -139,6 +156,10 @@ export default function CreatorStudio({
 
   // Encode the complete current portfolio into compressed base64 URI parameter
   const getShareableLink = () => {
+    // If portfolio is backed up to Cloud, prefer the crisp and compact cloud query parameter link!
+    if (portfolio.userId) {
+      return `${window.location.origin}${window.location.pathname}?id=${portfolio.id}`;
+    }
     try {
       const miniState = {
         n: portfolio.name,
@@ -953,6 +974,113 @@ export default function CreatorStudio({
               <p className="text-[10px] leading-relaxed text-neutral-500 font-mono italic">
                 {portfolio.description || 'No catalog meta description has been entered.'}
               </p>
+            </div>
+
+            {/* Cloud Portfolio Backup */}
+            <div className="space-y-3 p-4 border border-neutral-800/80 bg-neutral-900/30 rounded">
+              <div className="font-mono text-[10px] uppercase tracking-wider text-neutral-400 flex justify-between select-none">
+                <span>Cloud Portfolio Backup</span>
+                <span className="text-[9px] text-emerald-500 font-mono lowercase tracking-wide">Firestore Auth</span>
+              </div>
+
+              {isAuthLoading ? (
+                <div className="text-center p-3 border border-neutral-800 rounded bg-neutral-900/10 text-xs font-mono text-neutral-500">
+                  Checking cloud credentials...
+                </div>
+              ) : !currentUser ? (
+                <div className="p-3 border border-dashed border-neutral-800/80 rounded bg-neutral-900/25 text-center space-y-3">
+                  <p className="text-[10px] leading-relaxed text-neutral-400 font-mono">
+                    Sign in with Google to backup portfolios to secure cloud Firestore and share lightweight, robust links!
+                  </p>
+                  <button
+                    type="button"
+                    onClick={onGoogleSignIn}
+                    className="w-full py-2 px-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-900 font-semibold font-mono text-[10.5px] uppercase rounded transition-all cursor-pointer flex items-center justify-center gap-2 shadow"
+                  >
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                      <path fill="#EA4335" d="M12 5.04c1.67 0 3.19.57 4.38 1.69l3.27-3.27C17.65 1.58 15.02 1 12 1 7.37 1 3.41 3.66 1.45 7.55l3.8 2.95C6.18 7.35 8.87 5.04 12 5.04z" />
+                      <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.35H12v4.51h6.46c-.29 1.48-1.14 2.73-2.4 3.58l3.72 2.88c2.18-2.01 3.71-4.97 3.71-8.62z" />
+                      <path fill="#FBBC05" d="M5.25 14.5c-.25-.75-.39-1.55-.39-2.38s.14-1.63.39-2.38L1.45 6.79C.52 8.65 0 10.74 0 13s.52 4.35 1.45 6.21l3.8-2.71z" />
+                      <path fill="#34A853" d="M12 23c3.24 0 5.97-1.08 7.96-2.91l-3.72-2.88c-1.11.75-2.52 1.19-4.24 1.19-3.13 0-5.82-2.31-6.75-5.46l-3.8 2.95C3.41 20.34 7.37 23 12 23z" />
+                    </svg>
+                    <span>Sign in with Google</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2.5 justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {currentUser.photoURL ? (
+                        <img src={currentUser.photoURL} alt={currentUser.displayName || 'User'} className="w-5.5 h-5.5 rounded-full border border-neutral-700" referrerPolicy="no-referrer" />
+                      ) : (
+                        <div className="w-5.5 h-5.5 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-[9px] font-bold text-[var(--accent)] font-mono">
+                          {currentUser.email?.[0].toUpperCase() || 'U'}
+                        </div>
+                      )}
+                      <div className="font-mono min-w-0 leading-tight">
+                        <p className="text-[10px] font-bold text-neutral-200 truncate">{currentUser.displayName || 'Artist'}</p>
+                        <p className="text-[8px] text-neutral-500 truncate">{currentUser.email}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={onSignOut}
+                      className="px-2 py-0.5 bg-neutral-950 border border-neutral-800 hover:border-neutral-700 text-neutral-400 hover:text-neutral-100 rounded text-[9px] uppercase font-mono transition cursor-pointer flex-shrink-0"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={onSaveToCloud}
+                    className="w-full py-1.5 px-3 bg-[var(--accent)] text-zinc-950 font-bold font-mono text-[10px] uppercase rounded hover:scale-[1.01] transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>Backup Active to Cloud</span>
+                  </button>
+
+                  <div className="space-y-2 pt-2 border-t border-neutral-800/50">
+                    <span className="text-[9px] uppercase font-bold text-neutral-400 block tracking-wider select-none">Your Cloud Exhibits ({cloudPortfolios.length})</span>
+                    {isCloudLoading ? (
+                      <div className="text-center p-2 text-neutral-500 font-mono text-[10px]">Loading cloud index...</div>
+                    ) : cloudPortfolios.length === 0 ? (
+                      <p className="text-[9.5px] italic text-neutral-500 font-mono">No active cloud exhibits saved yet.</p>
+                    ) : (
+                      <div className="space-y-1.5 max-h-[155px] overflow-y-auto pr-1 studio-scrollbar">
+                        {cloudPortfolios.map((item) => {
+                          const isActive = item.id === portfolio.id;
+                          return (
+                            <div key={item.id} className="flex items-center justify-between p-2 rounded bg-neutral-950 border border-neutral-800/85 hover:border-neutral-700/80 transition">
+                              <span className={`text-[10.5px] truncate max-w-[65%] font-mono ${isActive ? 'text-[var(--accent)] font-bold' : 'text-neutral-300'}`}>
+                                {item.name}
+                              </span>
+                              <div className="flex gap-1 items-center flex-shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => onLoadPortfolio(item.id)}
+                                  disabled={isActive}
+                                  className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase transition ${isActive ? 'text-neutral-600 bg-transparent' : 'bg-neutral-900 border border-neutral-800 text-[var(--accent)] hover:bg-[var(--accent)] hover:text-neutral-950'}`}
+                                >
+                                  {isActive ? 'Active' : 'Load'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => onCloudDelete(item.id)}
+                                  className="p-1 rounded border border-neutral-800 text-neutral-500 hover:text-rose-450 hover:bg-rose-950/15 transition cursor-pointer"
+                                  title="Delete from Cloud"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Form Save New Preset */}

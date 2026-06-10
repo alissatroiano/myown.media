@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "Portfolio": {
+      "title": "Portfolio Exhibit",
+      "description": "A 3D cube portfolio exhibition layout and face config details",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The unique ID of the exhibition"
+        },
+        "userId": {
+          "type": "string",
+          "description": "The unique Firebase UID of the creator"
+        },
+        "ownerEmail": {
+          "type": "string",
+          "description": "The email address of the creator"
+        },
+        "name": {
+          "type": "string",
+          "description": "The title of the exhibition"
+        },
+        "description": {
+          "type": "string",
+          "description": "The descriptive text for the exhibition"
+        },
+        "accentColor": {
+          "type": "string",
+          "description": "The current color theme applied to the exhibition spaces"
+        },
+        "fontPair": {
+          "type": "string",
+          "description": "The selected theme font combination"
+        },
+        "theme": {
+          "type": "string",
+          "description": "Visual environment mode: light or dark setting"
+        },
+        "showGridLines": {
+          "type": "boolean",
+          "description": "Toggle grid styling on background and text frames"
+        },
+        "cubeGlow": {
+          "type": "boolean",
+          "description": "Whether the 3D rotating display cube features emission glowing outlines"
+        },
+        "layoutMode": {
+          "type": "string",
+          "description": "Exhibition frame mode: split, bento, or brutalist layout"
+        },
+        "faces": {
+          "type": "array",
+          "description": "Array of 6 faces configured for the 3D display cube"
+        },
+        "socials": {
+          "type": "object",
+          "description": "Social media handles of the artist/creator"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The last modification timestamp"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "accentColor",
+        "fontPair",
+        "theme",
+        "faces"
+      ]
+    }
+  },
+  "firestore": {
+    "/portfolios/{portfolioId}": {
+      "schema": "Portfolio",
+      "description": "Collection hosting saved and shared 3D exhibitions mapped under secure author IDs"
+    }
+  }
+}

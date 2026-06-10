@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. catch-all default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      // Allow anonymous users or non-verified if application needs, 
+      // but guidelines mandate: request.auth.token.email_verified == true for standard verified operations.
+      // For standard auth in Google, google signup is pre-verified. Let's make sure it is true or we handle it gracefully.
+      return request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Entity validation helper
+    function isValidPortfolio(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.description is string && data.description.size() <= 1000
+        && (data.theme == 'dark' || data.theme == 'light')
+        && (data.accentColor == 'amber' || data.accentColor == 'emerald' || data.accentColor == 'azure' || data.accentColor == 'crimson' || data.accentColor == 'violet' || data.accentColor == 'monochrome')
+        && (data.fontPair == 'bebas-mono' || data.fontPair == 'space-mono' || data.fontPair == 'playfair-inter' || data.fontPair == 'inter-sans')
+        && data.showGridLines is bool
+        && data.cubeGlow is bool
+        && data.faces is list
+        && data.faces.size() == 6;
+    }
+
+    match /portfolios/{portfolioId} {
+      // Portfolios are public to view, matching their exhibition nature.
+      allow get: if true;
+      
+      // Strict list queries
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isSignedIn()
+        && isEmailVerified()
+        && isValidId(portfolioId)
+        && request.resource.data.id == portfolioId
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.ownerEmail == request.auth.token.email
+        && isValidPortfolio(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if isSignedIn()
+        && isEmailVerified()
+        && isValidId(portfolioId)
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.createdAt == resource.data.createdAt
+        && isValidPortfolio(request.resource.data)
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if isSignedIn()
+        && isEmailVerified()
+        && isValidId(portfolioId)
+        && resource.data.userId == request.auth.uid;
+    }
+  }
+}

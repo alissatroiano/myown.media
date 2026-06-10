@@ -39,6 +39,10 @@ export interface Portfolio {
   faces: FaceConfig[];
   layoutMode?: 'split' | 'bento' | 'brutalist';
   socials?: SocialHandles;
+  userId?: string;
+  ownerEmail?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface PresetAsset {

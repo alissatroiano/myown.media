@@ -11,6 +11,16 @@ import CreatorStudio from './components/CreatorStudio';
 import { Palette, ExternalLink, HelpCircle, Check, BookOpen, Layers, Sparkles, QrCode, Play, Pause } from 'lucide-react';
 import QRCode from 'qrcode';
 
+import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
+import { auth, googleProvider } from './lib/firebase';
+import { 
+  validateFirestoreConnection, 
+  savePortfolioToFirestore, 
+  deletePortfolioFromFirestore, 
+  getUserPortfoliosFromFirestore, 
+  getPortfolioFromFirestore 
+} from './lib/firebaseService';
+
 const LOCAL_STORAGE_KEY_PREFIX = 'myown-media-portfolio-';
 const PORTFOLIO_INDEX_KEY = 'myown-media-index';
 
@@ -90,6 +100,7 @@ export default function App() {
   // QR mobile sharing state
   const [showQr, setShowQr] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [qrHasStrippedImages, setQrHasStrippedImages] = useState<boolean>(false);
   
   // Stored showcases index { id: string, name: string }[]
   const [savedPortfolios, setSavedPortfolios] = useState<{ id: string; name: string }[]>([]);
@@ -104,6 +115,102 @@ export default function App() {
     visible: boolean;
     clicking: boolean;
   }>({ x: 0, y: 0, visible: false, clicking: false });
+
+  // Firebase configurations & authentication states
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+  const [cloudPortfolios, setCloudPortfolios] = useState<Portfolio[]>([]);
+  const [isCloudLoading, setIsCloudLoading] = useState<boolean>(false);
+  const [isCloudSharedLoading, setIsCloudSharedLoading] = useState<boolean>(false);
+
+  // Authentication callbacks
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+      console.error("Sign in failed:", err);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error("Sign out failed:", err);
+    }
+  };
+
+  // Sync auth updates & load cloud portfolios index list
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
+      setIsAuthLoading(false);
+      if (user) {
+        setIsCloudLoading(true);
+        try {
+          const list = await getUserPortfoliosFromFirestore(user.uid);
+          setCloudPortfolios(list);
+        } catch (err) {
+          console.error("Failed to load user cloud portfolios:", err);
+        } finally {
+          setIsCloudLoading(false);
+        }
+      } else {
+        setCloudPortfolios([]);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleSaveToCloud = async () => {
+    if (!currentUser || !activePortfolio) return;
+    try {
+      let documentToSave = { ...activePortfolio };
+      // Assign ownership details
+      documentToSave.userId = currentUser.uid;
+      (documentToSave as any).ownerEmail = currentUser.email || '';
+      
+      // If saving over standard templates, clone them first
+      if (documentToSave.id === 'default-creativity' || documentToSave.id.startsWith('shared-')) {
+        documentToSave.id = `exhibit-${Date.now()}`;
+      }
+      
+      await savePortfolioToFirestore(documentToSave, currentUser.uid, currentUser.email || '');
+      
+      // Keep local list in sync as fallback
+      const hasItem = savedPortfolios.some(item => item.id === documentToSave.id);
+      let updatedSaved = [...savedPortfolios];
+      if (!hasItem) {
+        updatedSaved = [{ id: documentToSave.id, name: documentToSave.name }, ...savedPortfolios];
+        localStorage.setItem(PORTFOLIO_INDEX_KEY, JSON.stringify(updatedSaved));
+        setSavedPortfolios(updatedSaved);
+      }
+      localStorage.setItem(LOCAL_STORAGE_KEY_PREFIX + documentToSave.id, JSON.stringify(documentToSave));
+      
+      setActivePortfolio(documentToSave);
+      
+      // Fetch latest list from Firestore
+      setIsCloudLoading(true);
+      const list = await getUserPortfoliosFromFirestore(currentUser.uid);
+      setCloudPortfolios(list);
+      setIsCloudLoading(false);
+    } catch (err) {
+      console.error("Failed to backup portfolio to cloud:", err);
+    }
+  };
+
+  const handleCloudDelete = async (id: string) => {
+    if (!currentUser) return;
+    try {
+      if (window.confirm("Are you sure you want to delete this exhibition from the Cloud storage? This action cannot be undone.")) {
+        await deletePortfolioFromFirestore(id);
+        const list = await getUserPortfoliosFromFirestore(currentUser.uid);
+        setCloudPortfolios(list);
+      }
+    } catch (err) {
+      console.error("Failed to delete exhibition from cloud:", err);
+    }
+  };
 
   // Safe name updater for typing simulations avoiding stale closure problems
   const handleUpdatePortfolioName = (newName: string) => {
@@ -382,57 +489,112 @@ export default function App() {
 
   // System setup or state recovery
   useEffect(() => {
-    // 1. Check if the URL has an embedded exhibit hash
-    const sharedExhibit = parseUrlExhibit();
-    if (sharedExhibit) {
-      setActivePortfolio(sharedExhibit);
-      setIsReadOnly(true);
-      setIsStudioOpen(false); // Default to viewing when shared
-      return;
-    }
+    // Validate Firestore connection on component load
+    validateFirestoreConnection();
 
-    // 2. Fetch local saved index if none encoded in hash
-    try {
-      const storedIndexStr = localStorage.getItem(PORTFOLIO_INDEX_KEY);
-      let portfolioList: { id: string; name: string }[] = [];
-      if (storedIndexStr) {
-        portfolioList = JSON.parse(storedIndexStr);
-        setSavedPortfolios(portfolioList);
-      }
+    const loadPortfolioData = async () => {
+      // 1. Check if we have a direct Firestore cloud link ID (e.g. ?id=ex_123 or #id=ex_123)
+      const params = new URLSearchParams(window.location.search);
+      const queryId = params.get('id');
+      const hashPart = window.location.hash;
+      const hashIdMatch = hashPart.match(/[#&]id=([^&]+)/);
+      const cloudPortfolioId = queryId || (hashIdMatch ? hashIdMatch[1] : null);
 
-      if (portfolioList.length > 0) {
-        // Load the first saved or recently modified portfolio
-        const targetId = portfolioList[0].id;
-        const targetDataStr = localStorage.getItem(LOCAL_STORAGE_KEY_PREFIX + targetId);
-        if (targetDataStr) {
-          setActivePortfolio(JSON.parse(targetDataStr));
-          return;
+      if (cloudPortfolioId) {
+        setIsCloudSharedLoading(true);
+        try {
+          const docFetched = await getPortfolioFromFirestore(cloudPortfolioId);
+          if (docFetched) {
+            setActivePortfolio(docFetched);
+            setIsReadOnly(true);
+            setIsStudioOpen(false);
+            return;
+          }
+        } catch (err) {
+          console.error("Cloud document load failed, falling back to other storage methods.", err);
+        } finally {
+          setIsCloudSharedLoading(false);
         }
       }
-    } catch (e) {
-      console.warn("Retrying initialization default space...", e);
-    }
 
-    // 3. Fallback: Load the standard Luis Martinez "Reverse Creativity" template
-    const defaultTemplate = TEMPLATES[0];
-    const initialClone: Portfolio = {
-      ...defaultTemplate,
-      id: 'default-creativity'
+      // 2. Check if the URL has an embedded base64 exhibit hash parameter
+      const sharedExhibit = parseUrlExhibit();
+      if (sharedExhibit) {
+        setActivePortfolio(sharedExhibit);
+        setIsReadOnly(true);
+        setIsStudioOpen(false); // Default to viewing when shared
+        return;
+      }
+
+      // 3. Fetch local saved index if none encoded in hash/url
+      try {
+        const storedIndexStr = localStorage.getItem(PORTFOLIO_INDEX_KEY);
+        let portfolioList: { id: string; name: string }[] = [];
+        if (storedIndexStr) {
+          portfolioList = JSON.parse(storedIndexStr);
+          setSavedPortfolios(portfolioList);
+        }
+
+        if (portfolioList.length > 0) {
+          // Load the first saved or recently modified portfolio
+          const targetId = portfolioList[0].id;
+          const targetDataStr = localStorage.getItem(LOCAL_STORAGE_KEY_PREFIX + targetId);
+          if (targetDataStr) {
+            setActivePortfolio(JSON.parse(targetDataStr));
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("Retrying initialization default space...", e);
+      }
+
+      // 4. Fallback: Load the standard Luis Martinez "Reverse Creativity" template
+      const defaultTemplate = TEMPLATES[0];
+      const initialClone: Portfolio = {
+        ...defaultTemplate,
+        id: 'default-creativity'
+      };
+      setActivePortfolio(initialClone);
+      
+      // Save to local storage right away to initialize index
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY_PREFIX + initialClone.id, JSON.stringify(initialClone));
+        const freshList = [{ id: initialClone.id, name: initialClone.name }];
+        localStorage.setItem(PORTFOLIO_INDEX_KEY, JSON.stringify(freshList));
+        setSavedPortfolios(freshList);
+      } catch {}
     };
-    setActivePortfolio(initialClone);
-    
-    // Save to local storage right away to initialize index
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY_PREFIX + initialClone.id, JSON.stringify(initialClone));
-      const freshList = [{ id: initialClone.id, name: initialClone.name }];
-      localStorage.setItem(PORTFOLIO_INDEX_KEY, JSON.stringify(freshList));
-      setSavedPortfolios(freshList);
-    } catch {}
+
+    loadPortfolioData();
   }, []);
 
   // Listen to hash change to support dynamic router mapping
   useEffect(() => {
-    const handleHashChange = () => {
+    const handleHashChange = async () => {
+      // Check cloud portfolio link first
+      const params = new URLSearchParams(window.location.search);
+      const queryId = params.get('id');
+      const hashPart = window.location.hash;
+      const hashIdMatch = hashPart.match(/[#&]id=([^&]+)/);
+      const cloudPortfolioId = queryId || (hashIdMatch ? hashIdMatch[1] : null);
+
+      if (cloudPortfolioId) {
+        setIsCloudSharedLoading(true);
+        try {
+          const docFetched = await getPortfolioFromFirestore(cloudPortfolioId);
+          if (docFetched) {
+            setActivePortfolio(docFetched);
+            setIsReadOnly(true);
+            setIsStudioOpen(false);
+            return;
+          }
+        } catch (err) {
+          console.error("Cloud hash load failed:", err);
+        } finally {
+          setIsCloudSharedLoading(false);
+        }
+      }
+
       const shared = parseUrlExhibit();
       if (shared) {
         setActivePortfolio(shared);
@@ -478,9 +640,51 @@ export default function App() {
     if (!isReadOnly || !activePortfolio) return;
 
     const generateQr = async () => {
+      let urlToEncode = window.location.href;
+      let stripped = false;
+
+      // Check if URL is too long or contains base64 images, and proactively compact it
+      const hasBase64 = activePortfolio.faces.some(face => face.imageSrc?.startsWith('data:image/'));
+      if (hasBase64 || urlToEncode.length > 2000) {
+        try {
+          const miniState = {
+            n: activePortfolio.name,
+            d: activePortfolio.description,
+            a: activePortfolio.accentColor,
+            f: activePortfolio.fontPair,
+            t: activePortfolio.theme,
+            g: activePortfolio.showGridLines,
+            w: activePortfolio.cubeGlow,
+            lm: activePortfolio.layoutMode || 'split',
+            soc: activePortfolio.socials ? {
+              ig: activePortfolio.socials.instagram || '',
+              tw: activePortfolio.socials.twitter || '',
+              wb: activePortfolio.socials.website || '',
+              gh: activePortfolio.socials.github || ''
+            } : undefined,
+            fc: activePortfolio.faces.map(face => ({
+              fn: face.faceName,
+              tl: face.tagline,
+              ti: face.title,
+              bd: face.body,
+              is: face.imageSrc?.startsWith('data:image/') ? '' : face.imageSrc, // Replace giant base64 with empty string for QR compatibility
+              st: face.stats.map(s => [s.label, s.value]),
+              ct: face.ctaText
+            }))
+          };
+          const jsonStr = JSON.stringify(miniState);
+          const encoded = window.btoa(unescape(encodeURIComponent(jsonStr)));
+          const appBaseUrl = window.location.origin + window.location.pathname;
+          urlToEncode = `${appBaseUrl}#exhibit=${encoded}`;
+          stripped = true;
+        } catch (e) {
+          console.warn('Failed to compact local portfolio data for QR sharing:', e);
+        }
+      }
+
       try {
         // High-contrast clean styling to guarantee rapid camera focus on all phones
-        const url = await QRCode.toDataURL(window.location.href, {
+        const url = await QRCode.toDataURL(urlToEncode, {
           color: {
             dark: '#18181b', // Zn 900
             light: '#ffffff' // Pure White
@@ -490,8 +694,22 @@ export default function App() {
           errorCorrectionLevel: 'M'
         });
         setQrCodeUrl(url);
+        setQrHasStrippedImages(stripped);
       } catch (err) {
         console.error('Failed to generate exhibition QR link:', err);
+        // Fallback to origin url if still fails so QR component doesn't stay on "generating..." forever
+        try {
+          const fallbackUrl = await QRCode.toDataURL(window.location.origin, {
+            color: { dark: '#18181b', light: '#ffffff' },
+            margin: 1.5,
+            width: 260,
+            errorCorrectionLevel: 'M'
+          });
+          setQrCodeUrl(fallbackUrl);
+          setQrHasStrippedImages(true);
+        } catch (fallbackErr) {
+          console.error('QR code generation hard failure:', fallbackErr);
+        }
       }
     };
 
@@ -657,10 +875,17 @@ export default function App() {
             )}
           </div>
           
-          <div className="mt-3 flex items-center gap-1.5 text-[8.5px] text-neutral-500 border-t border-neutral-800/60 pt-2.5 w-full justify-center select-none">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Exhibition ready for camera scan</span>
-          </div>
+          {qrHasStrippedImages ? (
+            <div className="mt-3 text-[8px] leading-relaxed text-amber-500 bg-amber-500/10 border border-amber-500/20 p-2 rounded text-left select-none w-full">
+              <span className="font-bold block uppercase mb-0.5">⚠️ Large Images Omitted in QR</span>
+              Only layout, text & theme were packed to guarantee scan suitability. Use Unsplash image URLs to load slides on mobile.
+            </div>
+          ) : (
+            <div className="mt-3 flex items-center gap-1.5 text-[8.5px] text-neutral-500 border-t border-neutral-800/60 pt-2.5 w-full justify-center select-none">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Exhibition ready for camera scan</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -729,6 +954,14 @@ export default function App() {
             onSaveNewPortfolio={handleSaveNewPortfolio}
             onDeletePortfolio={handleDeletePortfolio}
             walkthroughTab={walkthroughTab}
+            currentUser={currentUser}
+            isAuthLoading={isAuthLoading}
+            cloudPortfolios={cloudPortfolios}
+            isCloudLoading={isCloudLoading}
+            onGoogleSignIn={handleGoogleSignIn}
+            onSignOut={handleSignOut}
+            onSaveToCloud={handleSaveToCloud}
+            onCloudDelete={handleCloudDelete}
           />
         );
       })()}
