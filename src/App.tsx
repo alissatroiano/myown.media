@@ -84,11 +84,19 @@ const parseUrlExhibit = (): Portfolio | null => {
   }
 };
 
+// Parse a Firebase document ID from query string (e.g. ?id=abc123)
+const parseCloudId = (): string | null => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('id');
+};
+
 export default function App() {
   const [activePortfolio, setActivePortfolio] = useState<Portfolio | null>(null);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
-  
+  const [isCloudLoading, setIsCloudLoading] = useState(false);
+  const [cloudLoadError, setCloudLoadError] = useState<string | null>(null);
+
   // QR mobile sharing state
   const [showQr, setShowQr] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
@@ -384,53 +392,104 @@ export default function App() {
 
   // System setup or state recovery
   useEffect(() => {
-    // 1. Check if the URL has an embedded exhibit hash
-    const sharedExhibit = parseUrlExhibit();
-    if (sharedExhibit) {
-      setActivePortfolio(sharedExhibit);
-      setIsReadOnly(true);
-      setIsStudioOpen(false); // Default to viewing when shared
-      return;
-    }
-
-    // 2. Fetch local saved index if none encoded in hash
-    try {
-      const storedIndexStr = localStorage.getItem(PORTFOLIO_INDEX_KEY);
-      let portfolioList: { id: string; name: string }[] = [];
-      if (storedIndexStr) {
-        portfolioList = JSON.parse(storedIndexStr);
-        setSavedPortfolios(portfolioList);
-      }
-
-      if (portfolioList.length > 0) {
-        // Load the first saved or recently modified portfolio
-        const targetId = portfolioList[0].id;
-        const targetDataStr = localStorage.getItem(LOCAL_STORAGE_KEY_PREFIX + targetId);
-        if (targetDataStr) {
-          setActivePortfolio(JSON.parse(targetDataStr));
-          return;
+    const initApp = async () => {
+      // 1. Check for Firebase cloud shared portfolio via ?id= query param
+      const cloudId = parseCloudId();
+      if (cloudId && isFirebaseConfigured && db) {
+        setIsCloudLoading(true);
+        setCloudLoadError(null);
+        try {
+          const docRef = doc(db, 'exhibitions', cloudId);
+          const snapshot = await getDoc(docRef);
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            const cloudPortfolio: Portfolio = {
+              id: `cloud-${cloudId}`,
+              name: data.name || 'Shared Exhibition',
+              description: data.description || '',
+              accentColor: data.accentColor || 'crimson',
+              fontPair: data.fontPair || 'space-mono',
+              theme: data.theme || 'dark',
+              showGridLines: data.showGridLines !== undefined ? data.showGridLines : true,
+              cubeGlow: data.cubeGlow !== undefined ? data.cubeGlow : true,
+              layoutMode: data.layoutMode || 'split',
+              socials: data.socials || { instagram: '', twitter: '', website: '', github: '' },
+              faces: (data.faces || []).map((face: any, i: number) => ({
+                faceName: face.faceName || `FACE ${i + 1}`,
+                tagline: face.tagline || '',
+                title: face.title || '',
+                body: face.body || '',
+                imageSrc: face.imageSrc || '',
+                stats: (face.stats || []).map((s: any) => ({ label: s.label || '', value: s.value || '' })),
+                ctaText: face.ctaText || 'Turn'
+              }))
+            };
+            setActivePortfolio(cloudPortfolio);
+            setIsReadOnly(true);
+            setIsStudioOpen(false);
+            setIsCloudLoading(false);
+            return;
+          } else {
+            setCloudLoadError(`Exhibition not found (ID: ${cloudId})`);
+          }
+        } catch (err) {
+          console.error('Failed to load cloud exhibition:', err);
+          setCloudLoadError('Failed to load cloud exhibition. Check your connection.');
         }
+        setIsCloudLoading(false);
       }
-    } catch (e) {
-      console.warn("Retrying initialization default space...", e);
-    }
 
-    // 3. Fallback: Load the standard Luis Martinez "Reverse Creativity" template
-    const defaultTemplate = TEMPLATES[0];
-    const initialClone: Portfolio = {
-      ...defaultTemplate,
-      id: 'default-creativity'
+      // 2. Check if the URL has an embedded exhibit hash
+      const sharedExhibit = parseUrlExhibit();
+      if (sharedExhibit) {
+        setActivePortfolio(sharedExhibit);
+        setIsReadOnly(true);
+        setIsStudioOpen(false); // Default to viewing when shared
+        return;
+      }
+
+      // 3. Fetch local saved index if none encoded in hash
+      try {
+        const storedIndexStr = localStorage.getItem(PORTFOLIO_INDEX_KEY);
+        let portfolioList: { id: string; name: string }[] = [];
+        if (storedIndexStr) {
+          portfolioList = JSON.parse(storedIndexStr);
+          setSavedPortfolios(portfolioList);
+        }
+
+        if (portfolioList.length > 0) {
+          // Load the first saved or recently modified portfolio
+          const targetId = portfolioList[0].id;
+          const targetDataStr = localStorage.getItem(LOCAL_STORAGE_KEY_PREFIX + targetId);
+          if (targetDataStr) {
+            setActivePortfolio(JSON.parse(targetDataStr));
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("Retrying initialization default space...", e);
+      }
+
+      // 4. Fallback: Load the standard Luis Martinez "Reverse Creativity" template
+      const defaultTemplate = TEMPLATES[0];
+      const initialClone: Portfolio = {
+        ...defaultTemplate,
+        id: 'default-creativity'
+      };
+      setActivePortfolio(initialClone);
+      
+      // Save to local storage right away to initialize index
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY_PREFIX + initialClone.id, JSON.stringify(initialClone));
+        const freshList = [{ id: initialClone.id, name: initialClone.name }];
+        localStorage.setItem(PORTFOLIO_INDEX_KEY, JSON.stringify(freshList));
+        setSavedPortfolios(freshList);
+      } catch {}
     };
-    setActivePortfolio(initialClone);
-    
-    // Save to local storage right away to initialize index
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY_PREFIX + initialClone.id, JSON.stringify(initialClone));
-      const freshList = [{ id: initialClone.id, name: initialClone.name }];
-      localStorage.setItem(PORTFOLIO_INDEX_KEY, JSON.stringify(freshList));
-      setSavedPortfolios(freshList);
-    } catch {}
+
+    initApp();
   }, []);
+
 
   // Listen to hash change to support dynamic router mapping
   useEffect(() => {
@@ -612,14 +671,40 @@ export default function App() {
     });
   };
 
+  if (isCloudLoading) {
+    return (
+      <div className="w-full h-screen bg-neutral-950 font-mono text-neutral-400 flex flex-col items-center justify-center select-none gap-3">
+        <div className="w-8 h-8 rounded-full border-2 border-neutral-800 border-t-sky-500 animate-spin mb-1" />
+        <span className="text-xs tracking-wider text-neutral-300">Loading cloud exhibition...</span>
+        <span className="text-[10px] text-neutral-600">Fetching from Firebase Cloud Storage</span>
+      </div>
+    );
+  }
+
+  if (cloudLoadError && !activePortfolio) {
+    return (
+      <div className="w-full h-screen bg-neutral-950 font-mono text-neutral-400 flex flex-col items-center justify-center select-none gap-3 px-6 text-center">
+        <div className="text-rose-500 text-lg font-bold">Exhibition Not Found</div>
+        <span className="text-xs text-neutral-400 max-w-sm">{cloudLoadError}</span>
+        <button
+          onClick={() => { window.location.href = window.location.origin + window.location.pathname; }}
+          className="mt-3 py-2 px-5 bg-neutral-800 border border-neutral-700 text-neutral-200 text-xs uppercase tracking-wider rounded hover:bg-neutral-700 transition cursor-pointer"
+        >
+          Go to My Workspace
+        </button>
+      </div>
+    );
+  }
+
   if (!activePortfolio) {
     return (
       <div className="w-full h-screen bg-neutral-950 font-mono text-neutral-400 flex flex-col items-center justify-center select-none">
-        <div className="w-8 h-8 rounded-full border-2 border-neutral-800 border-t-[var(--accent)] animate-spin-slow mb-3" />
+        <div className="w-8 h-8 rounded-full border-2 border-neutral-800 border-t-[var(--accent)] animate-spin mb-3" />
         <span className="text-xs tracking-wider">loading myown.media active matrices...</span>
       </div>
     );
   }
+
 
   return (
     <main className="w-full min-h-screen relative overflow-hidden selection:bg-[var(--accent)] selection:text-neutral-950">
